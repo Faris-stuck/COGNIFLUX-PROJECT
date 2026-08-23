@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const LINKS = [
   { href: "/explore", label: "Explore" },
@@ -12,6 +13,21 @@ const LINKS = [
 
 export function NavBar() {
   const pathname = usePathname();
+  // Signed-in indicator only; the Library page itself handles guest vs member.
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/auth/me")
+      .then((r) => {
+        if (alive) setSignedIn(r.ok);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [pathname]);
+
   return (
     <header className="border-b border-[var(--cf-border)] sticky top-0 z-40 bg-[var(--cf-bg)]/90 backdrop-blur">
       <nav aria-label="Primary" className="max-w-6xl mx-auto px-4 h-14 flex items-center gap-6">
@@ -36,6 +52,13 @@ export function NavBar() {
               </Link>
             );
           })}
+        </div>
+        <div className="ml-auto shrink-0">
+          {signedIn ? null : (
+            <Link href="/login" className="rounded-[10px] border border-[var(--cf-border)] hover:border-[var(--cf-accent)] transition-colors text-sm px-3.5 py-1.5">
+              Sign in
+            </Link>
+          )}
         </div>
       </nav>
     </header>

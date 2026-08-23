@@ -1,4 +1,5 @@
 import type { Work } from "@/lib/types";
+import { PaperActions } from "@/components/paper-actions";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -72,6 +73,14 @@ export default async function PaperPage({ params }: Props) {
       </header>
 
       <div className="flex flex-wrap items-center gap-2 mb-8">
+        <PaperActions paperKey={decoded} work={{
+          title: work.title,
+          authors: work.authors.slice(0, 10).map((a) => ({ name: a.name })),
+          publicationYear: work.publicationYear,
+          journal: work.journal,
+          doi: work.doi,
+          openAccess: work.openAccess,
+        }} />
         {work.doi && (
           <a
             href={`https://doi.org/${work.doi}`}
