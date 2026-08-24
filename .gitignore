@@ -6,3 +6,4 @@ out/
 *.log
 coverage/
 *.tsbuildinfo
+HERMES.md/
