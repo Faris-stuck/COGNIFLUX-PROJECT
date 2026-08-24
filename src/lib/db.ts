@@ -11,10 +11,15 @@ declare global {
 
 export function getPool(): Pool {
   if (!global._cfPool) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      // Fail fast and loudly. A hardcoded fallback here would let production
+      // boot "successfully" and then fail on every query with a confusing
+      // connection error instead of naming the missing variable.
+      throw new Error("DATABASE_URL is not set — refusing to start a database pool.");
+    }
     global._cfPool = new Pool({
-      connectionString:
-        process.env.DATABASE_URL ??
-        "postgresql://cogniflux:cogniflux@localhost:5432/cogniflux",
+      connectionString,
       max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,

@@ -1,71 +1,38 @@
 import { NextResponse } from "next/server";
-import { getPool, getRedis } from "@/lib/db";
+import { probeDependencies, uptimeSeconds } from "@/lib/health";
 
 /**
- * GET /api/health — production health probe.
+ * GET /api/health — liveness probe.
  *
- * Response shape:
  * { status, time, checks: { postgres: {up,latencyMs}, redis: {up,latencyMs} }, version, uptimeSeconds }
  *
  * Semantics:
- *  - HTTP 200 always when Postgres is reachable (even if degraded / Redis down),
- *    so monitors can read the body instead of just a status code.
- *  - HTTP 503 only when Postgres is down (the app is effectively unusable).
+ *  - 200 while Postgres is reachable, even if Redis is down (Redis-backed
+ *    caching and rate limiting both degrade open), with status="degraded".
+ *  - 503 only when Postgres is down — the app cannot serve meaningfully.
+ * For "should this instance take traffic?", use /readyz instead.
  */
 
-// Cache the version read at module load — package.json never changes mid-process.
+// Read once at module load — package.json cannot change mid-process.
 const VERSION = require("../../../../package.json").version as string;
-
-const startedAt = Date.now();
-
-type Check = { up: boolean; latencyMs: number };
-
-async function checkPostgres(): Promise<Check> {
-  const start = Date.now();
-  try {
-    await getPool().query("SELECT 1");
-    return { up: true, latencyMs: Date.now() - start };
-  } catch {
-    return { up: false, latencyMs: Date.now() - start };
-  }
-}
-
-async function checkRedis(): Promise<Check> {
-  const start = Date.now();
-  try {
-    const redis = await getRedis();
-    await redis.ping();
-    return { up: true, latencyMs: Date.now() - start };
-  } catch {
-    return { up: false, latencyMs: Date.now() - start };
-  }
-}
 
 export const dynamic = "force-dynamic"; // never cache a health probe
 
 export async function GET(): Promise<NextResponse> {
-  // Run both probes concurrently; each has its own timeout guard.
-  const TIMEOUT_MS = 4000;
-  const withTimeout = <T>(p: Promise<T>): Promise<T | null> =>
-    Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), TIMEOUT_MS))]);
+  const checks = await probeDependencies();
+  const allUp = checks.postgres.up && checks.redis.up;
 
-  const [postgres, redis] = await Promise.all([
-    withTimeout(checkPostgres()).then((r) => r ?? { up: false, latencyMs: TIMEOUT_MS }),
-    withTimeout(checkRedis()).then((r) => r ?? { up: false, latencyMs: TIMEOUT_MS }),
-  ]);
-
-  const body = {
-    // "degraded" whenever any dependency is down but the app can still serve
-    // (Redis-backed caching/rate-limiting degrades open by design).
-    status: postgres.up && redis.up ? "ok" : "degraded",
-    time: new Date().toISOString(),
-    checks: { postgres, redis },
-    version: VERSION,
-    uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
-  };
-
-  return NextResponse.json(body, {
-    status: postgres.up ? 200 : 503,
-    headers: { "Cache-Control": "no-store" },
-  });
+  return NextResponse.json(
+    {
+      status: allUp ? "ok" : "degraded",
+      time: new Date().toISOString(),
+      checks,
+      version: VERSION,
+      uptimeSeconds: uptimeSeconds(),
+    },
+    {
+      status: checks.postgres.up ? 200 : 503,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
 }
