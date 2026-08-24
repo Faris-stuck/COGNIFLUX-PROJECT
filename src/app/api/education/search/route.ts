@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { EducationSearchParamsSchema, EDUCATION_SUBJECTS, EDUCATION_LEVELS } from "@/lib/education/types";
+import { withRequestId } from "@/lib/observability";
 
 export const dynamic = "force-dynamic";
 
@@ -7,8 +8,9 @@ export const dynamic = "force-dynamic";
  * GET /api/education/search?q=&level=&subject=&grade=&language=&resourceType=
  * &yearFrom=&yearTo=&page=&perPage=
  * Orchestrated education search: parallel providers -> dedup -> rank.
+ * Wrapped in withRequestId: emits one JSON access-log line + x-request-id header.
  */
-export async function GET(req: NextRequest) {
+export const GET = withRequestId(async (req: NextRequest) => {
   const sp = req.nextUrl.searchParams;
   const list = (k: string) => sp.getAll(k).flatMap((v) => v.split(",")).filter(Boolean);
   const parsed = EducationSearchParamsSchema.safeParse({
@@ -42,4 +44,4 @@ export async function GET(req: NextRequest) {
       { status: 502 }
     );
   }
-}
+});

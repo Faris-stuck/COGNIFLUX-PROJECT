@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SearchParamsSchema } from "@/lib/types";
+import { withRequestId } from "@/lib/observability";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/search?q=...&page=1&perPage=20&yearFrom=&yearTo=&openAccessOnly=&sort=
  * Orchestrated, cached, deduplicated search across providers.
+ * Wrapped in withRequestId: emits one JSON access-log line + x-request-id header.
  */
-export async function GET(req: NextRequest) {
+export const GET = withRequestId(async (req: NextRequest) => {
   const sp = req.nextUrl.searchParams;
   const parsed = SearchParamsSchema.safeParse({
     q: sp.get("q") ?? "",
@@ -39,4 +41,4 @@ export async function GET(req: NextRequest) {
       { status: 502 }
     );
   }
-}
+});
