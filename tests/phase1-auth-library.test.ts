@@ -51,6 +51,21 @@ function randInt(): number {
   return 1 + Math.floor(Math.random() * 253);
 }
 
+function randIp(): string {
+  return `${randInt()}.${randInt()}.${randInt()}.${randInt()}`;
+}
+
+/**
+ * Headers for tests that intentionally use a bare fetch (no session client).
+ * A unique X-Forwarded-For per call keeps each assertion in its own
+ * rate-limit bucket: the limiter stays fully armed, but repeated suite runs
+ * inside the 900s window can no longer exhaust the shared "local" bucket and
+ * turn a 409/401 assertion into a 429.
+ */
+function anonHeaders(): Record<string, string> {
+  return { "content-type": "application/json", "x-forwarded-for": randIp() };
+}
+
 const PAPER_A = { paperKey: "doi:10.1111/test-a", work: { title: "Test Paper A", authors: [{ name: "A. Author" }], publicationYear: 2024, openAccess: { isOa: true } } };
 const PAPER_B = { paperKey: "doi:10.2222/test-b", work: { title: "Test Paper B", authors: [], publicationYear: 2023, openAccess: { isOa: false } } };
 
@@ -69,7 +84,7 @@ describe("Authentication", () => {
   it("rejects weak passwords", async () => {
     const res = await fetch(`${BASE}/api/auth/register`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: anonHeaders(),
       body: JSON.stringify({ email: "weakpw@cogniflux.test", password: "short" }),
     });
     expect(res.status).toBe(400);
@@ -79,7 +94,7 @@ describe("Authentication", () => {
     const c = await registerClient();
     const res = await fetch(`${BASE}/api/auth/register`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: anonHeaders(),
       body: JSON.stringify({ email: c.email, password: "Otherpass123" }),
     });
     expect(res.status).toBe(409);
@@ -91,7 +106,7 @@ describe("Authentication", () => {
     const c = await registerClient();
     const res = await fetch(`${BASE}/api/auth/login`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: anonHeaders(),
       body: JSON.stringify({ email: c.email, password: c.password }),
     });
     expect(res.status).toBe(200);
@@ -101,12 +116,12 @@ describe("Authentication", () => {
   it("login fails uniformly for wrong password AND unknown email (anti-enumeration)", async () => {
     const wrongPw = await fetch(`${BASE}/api/auth/login`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: anonHeaders(),
       body: JSON.stringify({ email: "phase1-test+known@cogniflux.test", password: "WrongPass999" }),
     });
     const unknownEmail = await fetch(`${BASE}/api/auth/login`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: anonHeaders(),
       body: JSON.stringify({ email: `nobody-${Date.now()}@cogniflux.test`, password: "WrongPass999" }),
     });
     expect(wrongPw.status).toBe(401);
@@ -133,7 +148,7 @@ describe("Authentication", () => {
     const mk = (email: string) =>
       fetch(`${BASE}/api/auth/forgot`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: anonHeaders(),
         body: JSON.stringify({ email }),
       }).then((r) => r.json());
     const a = await mk(`phase1-test+known-enum@cogniflux.test`);
