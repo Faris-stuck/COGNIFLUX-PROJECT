@@ -82,3 +82,10 @@ gap table, RC validation numbers, and deployment topology.
 ## License
 
 Private project — all rights reserved unless a license file is added.
+
+---
+
+> **Note:** this repository is the source mirror of an app running on a single
+> VPS. The production database is **schema-only** here (`db/schema.sql`) — no
+> user data is committed, and `.env.local` never leaves the server.
+
