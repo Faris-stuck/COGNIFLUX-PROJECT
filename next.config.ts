@@ -21,6 +21,14 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: __dirname,
   poweredByHeader: false,
 
+  // isomorphic-dompurify pulls in jsdom -> html-encoding-sniffer, which does a
+  // CJS require() of @exodus/bytes/encoding-lite.js. @exodus/bytes is ESM-only
+  // ("type": "module"), so webpack's CJS interop breaks at runtime with
+  // ERR_REQUIRE_ESM — but only in the production bundle (dev and jest transform
+  // it differently). Keep the whole jsdom chain external so Node resolves it
+  // natively from node_modules, where the require works fine.
+  serverExternalPackages: ["isomorphic-dompurify", "jsdom", "html-encoding-sniffer"],
+
   // Conventional short probe paths for proxies/orchestrators, mapped onto the
   // real route handlers. Rewrites (not redirects) so probes get 200/503
   // directly instead of a 3xx a load balancer would have to follow.

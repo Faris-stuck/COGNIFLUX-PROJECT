@@ -3,7 +3,7 @@
 # Read-only apart from creating one throwaway account (required to exercise
 # authenticated routes). Never prints secrets.
 set -u
-BASE="${BASE:-http://127.0.0.1:3101}"
+BASE="${BASE_URL:-${BASE:-http://127.0.0.1:3101}}"
 J=$(mktemp)
 PASS=0; FAIL=0
 
