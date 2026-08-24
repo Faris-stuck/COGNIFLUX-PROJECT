@@ -59,17 +59,52 @@ sudo -u postgres psql -d cogniflux -f db/migrations/001_auth_library.sql
 
 | Area | CURRENT (verified) | TARGET |
 |---|---|---|
-| App runtime | single `next dev -p 3100` dev process | `next start -p 3100` prod build under PM2/systemd |
-| Production build | not built (dev server occupies `.next/`) | built artifact, rebuilt on each deploy |
+| App runtime | production standalone build verified on loopback `:3101`; dev server still the day-to-day process | `next start`/standalone on `:3100` under PM2/systemd |
+| Production build | `output: "standalone"` builds clean in ~85s, peak node RSS ~1.8–2.4GB, artifact 96MB | unchanged + built in CI |
 | Reverse proxy | none | nginx/caddy on loopback→3100 |
 | TLS / domain | none | Cloudflare TLS + origin cert |
 | PostgreSQL | local, 25 tables, backup script works | unchanged (co-located, loopback) |
 | Backups | manual `scripts/backup_db.sh` → `~/backups/cogniflux/` | + scheduled cron + restore drill |
-| Redis | local healthy | unchanged |
-| Health checks | `/api/health` live (PG+Redis latency, 200 ok / 503 when PG down) | wired into proxy & external monitoring |
-| CI | none | tsc + jest gate before deploy |
+| Redis | local healthy; outage path verified to degrade open (bounded reconnect + 10s circuit breaker) | unchanged |
+| Health checks | `/health` (liveness, 200 degraded / 503 on PG loss) and `/readyz` (readiness, 503 if ANY dep down) — both verified by failure injection | wired into proxy & external monitoring |
+| CI | none | tsc + jest + deploy_check gate before deploy |
 | Logs | JSON access lines (requestId) on `/api/search` + `/api/education/search` via `withRequestId`; rest still ad-hoc | all routes wrapped |
-| Secrets | env files, uncommitted | unchanged + documented rotation |
+| Secrets | env files, uncommitted; `scripts/scan_secrets.sh` verifies no leakage into artifacts | unchanged + documented rotation |
+| Process manager | none — RC test instance launched manually | PM2 or systemd with restart-on-failure |
+
+## Release Candidate validation (2026-08-24)
+
+Reproduce with:
+
+```bash
+bash scripts/rc_state_snapshot.sh              # record pre-change state
+bash scripts/build_prod.sh                     # build + memory instrumentation
+bash scripts/start_prod_test.sh                # standalone on 127.0.0.1:3101
+bash scripts/smoke_prod.sh                     # 53 functional checks
+bash scripts/test_health_failures.sh           # dependency failure injection
+bash scripts/mem_profile_prod.sh               # per-phase memory profile
+APP_URL=http://127.0.0.1:3101 bash scripts/deploy_check.sh
+```
+
+Measured on this VPS (3723MB total):
+
+| Metric | Value |
+|---|---|
+| Build exit / duration | 0 / 85s |
+| Build peak node RSS | 1789–2447MB (min system available 524MB) |
+| Standalone artifact | 96MB, `.next/standalone/server.js` |
+| Prod startup | ready in ~253ms |
+| Prod idle RSS | 212MB |
+| Prod peak RSS (20 concurrent) | 221MB |
+| Smoke test | 53/53 |
+| Failure injection | 14/14 |
+| Jest | 86/86 |
+| deploy_check | 7/7 |
+
+**The build, not the running app, is the memory risk.** The production process
+sits at ~220MB (about 6% of the box), but `next build` peaked at 2.4GB with only
+524MB left free. Do not build while the app serves traffic on this VPS — build
+elsewhere, or accept a maintenance window.
 
 ## Changelog of prod migrations
 
