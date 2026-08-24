@@ -11,6 +11,8 @@
     "test": "jest"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.11.0",
+    "isomorphic-dompurify": "^3.22.0",
     "next": "^15.5.23",
     "pg": "^8.23.0",
     "react": "^19.2.8",

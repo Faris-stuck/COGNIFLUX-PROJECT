@@ -7,6 +7,8 @@ export interface ProviderCapabilities {
   getRelated: boolean;
   getReferences: boolean;
   getCitations: boolean;
+  /** Provider can return structured full text (getFullText). */
+  getFullText: boolean;
 }
 
 export const NO_CAPABILITIES: ProviderCapabilities = {
@@ -16,6 +18,7 @@ export const NO_CAPABILITIES: ProviderCapabilities = {
   getRelated: false,
   getReferences: false,
   getCitations: false,
+  getFullText: false,
 };
 
 /** Every academic/open-access provider implements this. Unsupported operations report capability=false and throw ProviderUnsupported. */

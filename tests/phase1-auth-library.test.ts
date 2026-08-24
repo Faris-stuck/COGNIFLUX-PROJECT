@@ -6,6 +6,9 @@
  */
 const BASE = process.env.BASE_URL ?? "http://localhost:3100";
 
+// Module scope marker (prevents global-script merging across test files).
+export {};
+
 interface Client {
   email: string;
   password: string;

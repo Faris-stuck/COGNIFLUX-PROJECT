@@ -4,5 +4,12 @@ module.exports = {
   testEnvironment: "node",
   roots: ["<rootDir>/tests"],
   moduleNameMapper: { "^@/(.*)$": "<rootDir>/src/$1" },
-  transform: { "^.+\\.tsx?$": ["ts-jest", { tsconfig: { esModuleInterop: true, target: "ES2022" } }] },
+  transform: {
+    "^.+\\.tsx?$": ["ts-jest", { tsconfig: { esModuleInterop: true, target: "ES2022" } }],
+    // @exodus/bytes (jsdom dep of isomorphic-dompurify) ships ESM .js - convert to CJS.
+    "^.+\\.m?js$": ["ts-jest", { tsconfig: { esModuleInterop: true, target: "ES2022" }, isolateModules: false }],
+  },
+  transformIgnorePatterns: [
+    "/node_modules/(?!(@exodus/bytes|parse5|entities|@asamuzakjp|@csstools|css-tree|mdn-data)/)",
+  ],
 };

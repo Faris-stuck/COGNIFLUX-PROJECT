@@ -1,5 +1,6 @@
 import type { Work } from "@/lib/types";
 import { PaperActions } from "@/components/paper-actions";
+import { ReadButton } from "@/components/read-button";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -73,6 +74,7 @@ export default async function PaperPage({ params }: Props) {
       </header>
 
       <div className="flex flex-wrap items-center gap-2 mb-8">
+        <ReadButton paperId={decoded} />
         <PaperActions paperKey={decoded} work={{
           title: work.title,
           authors: work.authors.slice(0, 10).map((a) => ({ name: a.name })),
