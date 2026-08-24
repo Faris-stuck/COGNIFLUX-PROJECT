@@ -8,6 +8,9 @@ set -u
 cd "$(dirname "$0")/.."
 
 APP_URL="${APP_URL:-http://localhost:3100}"
+# Integration tests drive whatever instance APP_URL points at, so the gate
+# validates the SAME target it probes rather than a different server.
+export BASE_URL="${BASE_URL:-$APP_URL}"
 declare -a NAMES=() RESULTS=()
 PASS=0; FAIL=0
 
@@ -56,6 +59,26 @@ case "$code" in
   000) record "api/health" 1 "no response at $APP_URL (app running? /api/health exists yet?)" ;;
   *)   record "api/health" 1 "HTTP $code ${body:+— }$body" ;;
 esac
+
+# 6. Readiness endpoint — stricter than health: every dependency must be up.
+code=$(curl -s -o /tmp/cogniflux_ready.$$ -w '%{http_code}' --max-time 5 "$APP_URL/readyz" 2>/dev/null || echo 000)
+body=$(tr -d '\n' < "/tmp/cogniflux_ready.$$" 2>/dev/null | head -c 100); rm -f "/tmp/cogniflux_ready.$$"
+case "$code" in
+  200) record "readyz" 0 "HTTP $code ${body:+— }$body" ;;
+  000) record "readyz" 1 "no response at $APP_URL/readyz" ;;
+  *)   record "readyz" 1 "HTTP $code ${body:+— }$body" ;;
+esac
+
+# 7. Secret-leak scan of build artifacts (skipped when nothing is built yet).
+if [ -d .next/static ]; then
+  if out=$(bash scripts/scan_secrets.sh 2>&1); then
+    record "secret-scan" 0 "no leakage detected"
+  else
+    record "secret-scan" 1 "$(echo "$out" | grep -E '^\s*\[(LEAK|FAIL)\]' | head -3 | tr '\n' ' ')"
+  fi
+else
+  record "secret-scan" 0 "skipped (no build artifacts)"
+fi
 
 echo "== Summary: $PASS passed, $FAIL failed =="
 [ "$FAIL" -eq 0 ] && echo "RESULT: PASS" || echo "RESULT: FAIL"
