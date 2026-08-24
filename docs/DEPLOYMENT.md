@@ -79,27 +79,44 @@ Reproduce with:
 ```bash
 bash scripts/rc_state_snapshot.sh              # record pre-change state
 bash scripts/build_prod.sh                     # build + memory instrumentation
-bash scripts/start_prod_test.sh                # standalone on 127.0.0.1:3101
-bash scripts/smoke_prod.sh                     # 53 functional checks
+sudo systemctl start cogniflux                 # systemd unit (deploy/cogniflux.service)
+BASE_URL=https://cogniflux.web.id bash scripts/smoke_prod.sh   # 53 functional checks
 bash scripts/test_health_failures.sh           # dependency failure injection
 bash scripts/mem_profile_prod.sh               # per-phase memory profile
-APP_URL=http://127.0.0.1:3101 bash scripts/deploy_check.sh
+APP_URL=https://cogniflux.web.id bash scripts/deploy_check.sh
 ```
 
 Measured on this VPS (3723MB total):
 
 | Metric | Value |
 |---|---|
-| Build exit / duration | 0 / 85s |
-| Build peak node RSS | 1789–2447MB (min system available 524MB) |
+| Build exit / duration | 0 / 84s |
+| Build peak node RSS | 1634–2447MB (min system available 524–969MB) |
 | Standalone artifact | 96MB, `.next/standalone/server.js` |
-| Prod startup | ready in ~253ms |
+| Prod startup | ready in ~250ms |
 | Prod idle RSS | 212MB |
 | Prod peak RSS (20 concurrent) | 221MB |
-| Smoke test | 53/53 |
+| Smoke test vs public domain | **53/53** |
 | Failure injection | 14/14 |
 | Jest | 86/86 |
 | deploy_check | 7/7 |
+
+**Production live (2026-08-25):** https://cogniflux.web.id — Cloudflare proxied →
+nginx 443 (Let's Encrypt, HTTP→HTTPS 301) → systemd `cogniflux.service` →
+Next.js standalone on 127.0.0.1:3100.
+
+Operational notes:
+
+- The unit pins PATH to Node v22 (`/home/ubuntu/.hermes/node/bin`). The VPS's
+  `/usr/bin/node` is v18, which cannot require() the ESM-only packages in the
+  reader chain (`html-encoding-sniffer` → `@exodus/bytes`) — under v18 the
+  fulltext routes 500 with ERR_REQUIRE_ESM. If you move hosts, keep node ≥ 22.
+- `serverExternalPackages` keeps dompurify/jsdom out of the webpack bundle so
+  Node resolves them natively from node_modules.
+- Rebuild procedure: stop nothing — `scripts/build_prod.sh` refuses nothing, but
+  the running server holds `.next/`; safest sequence is
+  `sudo systemctl stop cogniflux && bash scripts/build_prod.sh && sudo systemctl start cogniflux`
+  (~90s downtime), then re-run the smoke script.
 
 **The build, not the running app, is the memory risk.** The production process
 sits at ~220MB (about 6% of the box), but `next build` peaked at 2.4GB with only
