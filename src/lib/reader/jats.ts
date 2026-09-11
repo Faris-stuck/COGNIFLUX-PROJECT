@@ -216,7 +216,7 @@ function extractBlocksFromChildren(children: ODoc, blocks: DocBlock[], ctx: Extr
   const subs: DocSection[] = [];
   let paraBuf: ONode[] = [];
 
-  const flushPara = () => {
+  const flushPara = async () => {
     if (paraBuf.length === 0) return;
     const rawHtml = paraBuf.map((p) => toHtml([p])).join(" ");
     const html = sanitizeHtml(rawHtml);

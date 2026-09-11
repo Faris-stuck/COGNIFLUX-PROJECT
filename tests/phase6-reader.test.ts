@@ -44,34 +44,34 @@ const JATS = `<?xml version="1.0"?>
 </article>`;
 
 describe("HTML sanitization", () => {
-  it("strips script tags", () => {
-    const out = sanitizeHtml("<p>safe</p><script>alert('x')</script>");
+  it("strips script tags", async () => {
+    const out = await sanitizeHtml("<p>safe</p><script>alert('x')</script>");
     expect(out).not.toContain("<script");
     expect(out).not.toContain("alert");
     expect(out).toContain("safe");
   });
 
-  it("removes event handlers", () => {
-    const out = sanitizeHtml('<td onclick="steal()">cell</td>');
+  it("removes event handlers", async () => {
+    const out = await sanitizeHtml('<td onclick="steal()">cell</td>');
     expect(out).not.toContain("onclick");
     expect(out).toContain("cell");
   });
 
-  it("blocks javascript: URLs but keeps https links", () => {
-    expect(sanitizeHtml('<a href="javascript:alert(1)">x</a>')).not.toContain("javascript:");
-    expect(sanitizeHtml('<a href="https://example.com">x</a>')).toContain('href="https://example.com"');
+  it("blocks javascript: URLs but keeps https links", async () => {
+    expect(await sanitizeHtml('<a href="javascript:alert(1)">x</a>')).not.toContain("javascript:");
+    expect(await sanitizeHtml('<a href="https://example.com">x</a>')).toContain('href="https://example.com"');
   });
 
-  it("keeps legitimate scientific formatting (em/strong/sub/sup)", () => {
-    const out = sanitizeHtml("<em>i</em><strong>b</strong><sub>x</sub><sup>2</sup>");
+  it("keeps legitimate scientific formatting (em/strong/sub/sup)", async () => {
+    const out = await sanitizeHtml("<em>i</em><strong>b</strong><sub>x</sub><sup>2</sup>");
     expect(out).toContain("<em>");
     expect(out).toContain("<strong>");
     expect(out).toContain("<sub>");
     expect(out).toContain("<sup>");
   });
 
-  it("preserves table structure while stripping unsafe attrs", () => {
-    const out = sanitizeHtml("<table><tbody><tr><td colspan='2'>v</td></tr></tbody></table>");
+  it("preserves table structure while stripping unsafe attrs", async () => {
+    const out = await sanitizeHtml("<table><tbody><tr><td colspan='2'>v</td></tr></tbody></table>");
     expect(out).toContain("<table>");
     expect(out).toContain('colspan');
   });
@@ -124,9 +124,9 @@ describe("stable section anchors", () => {
 });
 
 describe("JATS normalization", () => {
-  let doc: ReturnType<typeof normalizeJats>;
-  beforeAll(() => {
-    doc = normalizeJats(JATS, { paperId: "doi:10.1234/test.001", providerId: "europepmc" });
+  let doc: Awaited<ReturnType<typeof normalizeJats>>;
+  beforeAll(async () => {
+    doc = await normalizeJats(JATS, { paperId: "doi:10.1234/test.001", providerId: "europepmc" });
   });
 
   it("extracts metadata", () => {

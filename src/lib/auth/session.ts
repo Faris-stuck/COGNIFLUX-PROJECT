@@ -26,6 +26,15 @@ export async function createSession(userId: string): Promise<void> {
     expires: expiresAt,
     path: "/",
   });
+
+  // Opportunistic GC. purgeExpiredSessions() previously had no callers anywhere in
+  // the codebase, so expired rows accumulated forever. Running it on ~2% of logins
+  // keeps the table bounded without a cron job or an extra query on the hot path,
+  // and it is deliberately fire-and-forget: a failed cleanup must never fail a
+  // successful login. idx_sessions_expiry makes the DELETE an index scan.
+  if (Math.random() < 0.02) {
+    void purgeExpiredSessions().catch(() => {});
+  }
 }
 
 /** Resolve current user from session cookie. Returns null for guests. */

@@ -98,7 +98,7 @@ export async function cached<T>(key: string, ttlSeconds: number, fn: () => Promi
     /* cache unavailable -> pass through */
   }
   const value = await fn();
-  if (redis) {
+  if (redis && value !== null && value !== undefined) {
     try {
       await redis.set(key, JSON.stringify(value), { EX: ttlSeconds });
     } catch {

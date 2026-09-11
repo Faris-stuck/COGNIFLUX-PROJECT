@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 interface Resource {
   id: string;
@@ -43,6 +44,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 function ResourceCard({ r }: { r: Resource }) {
+  const { t } = useI18n();
   const [saved, setSaved] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "busy" | "done" | "auth">("idle");
 
@@ -93,14 +95,15 @@ function ResourceCard({ r }: { r: Resource }) {
           rel="noopener noreferrer"
           className="rounded-[10px] border border-[var(--cf-border)] hover:border-[var(--cf-accent)] transition-colors px-3 py-1.5 text-sm"
         >
-          Open
+          {t.learn.open}
         </a>
         <button
+          type="button"
           onClick={save}
           disabled={saved || saveState === "busy"}
           className="rounded-[10px] border border-[var(--cf-border)] hover:border-[var(--cf-accent)] transition-colors px-3 py-1.5 text-sm disabled:opacity-60"
         >
-          {saveState === "auth" ? "Sign in to save" : saved || saveState === "done" ? "Saved ✓" : saveState === "busy" ? "Saving…" : "Save"}
+          {saveState === "auth" ? t.learn.signIn : saved || saveState === "done" ? t.learn.saved : saveState === "busy" ? "…" : t.learn.save}
         </button>
       </div>
     </article>
@@ -108,6 +111,7 @@ function ResourceCard({ r }: { r: Resource }) {
 }
 
 export function EducationSearch() {
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [level, setLevel] = useState<string[]>([]);
   const [subject, setSubject] = useState("");
@@ -125,14 +129,14 @@ export function EducationSearch() {
   }, []);
 
   const runSearch = useCallback(
-    async (query: string) => {
+    async (query: string, nextLevel = level, nextSubject = subject) => {
       if (!query.trim()) return;
       setLoading(true);
       setError(null);
       try {
         const params = new URLSearchParams({ q: query });
-        if (level.length) params.set("level", level.join(","));
-        if (subject) params.set("subject", subject);
+        if (nextLevel.length) params.set("level", nextLevel.join(","));
+        if (nextSubject) params.set("subject", nextSubject);
         const res = await fetch(`/api/education/search?${params}`);
         if (!res.ok) throw new Error();
         const data = await res.json();
@@ -140,7 +144,7 @@ export function EducationSearch() {
         setTotal(data.total as number);
       } catch {
         setResults(null);
-        setError("We couldn't retrieve learning resources right now. Please try again.");
+        setError("Please try again.");
       } finally {
         setLoading(false);
       }
@@ -163,29 +167,31 @@ export function EducationSearch() {
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search learning materials… (e.g. grade 8 mathematics / matematika kelas 8)"
+          placeholder={t.learn.placeholder}
           className="flex-1 bg-transparent outline-none text-[15px]"
-          aria-label="Search learning materials"
+          aria-label={t.common.search}
         />
         <button type="submit" className="rounded-[8px] bg-[var(--cf-accent)] text-white text-sm px-3.5 py-1.5">
-          Search
+          {t.common.search}
         </button>
       </form>
 
       {/* Browse by level */}
       <div className="mt-4">
-        <p className="text-sm text-[var(--cf-text-muted)] mb-2">Browse by level</p>
+        <p className="text-sm text-[var(--cf-text-muted)] mb-2">{t.learn.browse}</p>
         <div role="list" className="flex flex-wrap gap-2">
           {(taxonomy?.levels ?? []).map((l) => {
             const active = level.includes(l.slug);
             return (
               <button
+                type="button"
                 key={l.slug}
                 role="listitem"
                 aria-pressed={active}
                 onClick={() => {
-                  setLevel(active ? level.filter((x) => x !== l.slug) : [...level, l.slug]);
-                  if (!active && q.trim()) setTimeout(() => runSearch(q), 0);
+                  const nextLevel = active ? level.filter((x) => x !== l.slug) : [...level, l.slug];
+                  setLevel(nextLevel);
+                  if (q.trim()) void runSearch(q, nextLevel, subject);
                 }}
                 className={`rounded-full border px-4 py-2 text-sm transition-colors ${
                   active
@@ -203,17 +209,26 @@ export function EducationSearch() {
       {/* Subject filter - only shown once there are results (spec: no filters without support) */}
       {results && results.length > 0 && taxonomy && (
         <div className="mt-3 flex flex-wrap gap-1.5 items-center">
-          <span className="text-xs text-[var(--cf-text-muted)] mr-1">Subject:</span>
+          <span className="text-xs text-[var(--cf-text-muted)] mr-1">{t.learn.subject}:</span>
           <button
-            onClick={() => setSubject("")}
+            type="button"
+            onClick={() => {
+              setSubject("");
+              if (q.trim()) void runSearch(q, level, "");
+            }}
             className={`rounded-full border px-2.5 py-1 text-xs ${!subject ? "border-[var(--cf-accent)] text-[var(--cf-accent-strong)]" : "border-[var(--cf-border)] text-[var(--cf-text-muted)]"}`}
           >
-            All
+            {t.learn.all}
           </button>
           {taxonomy.subjects.slice(0, 12).map((s) => (
             <button
+              type="button"
               key={s.slug}
-              onClick={() => setSubject(s.slug === subject ? "" : s.slug)}
+              onClick={() => {
+                const nextSubject = s.slug === subject ? "" : s.slug;
+                setSubject(nextSubject);
+                if (q.trim()) void runSearch(q, level, nextSubject);
+              }}
               className={`rounded-full border px-2.5 py-1 text-xs ${subject === s.slug ? "border-[var(--cf-accent)] text-[var(--cf-accent-strong)]" : "border-[var(--cf-border)] text-[var(--cf-text-muted)] hover:text-[var(--cf-text)]"}`}
             >
               {s.label.en}
@@ -223,25 +238,24 @@ export function EducationSearch() {
       )}
 
       {/* States */}
-      {loading && <p className="mt-8 text-sm text-[var(--cf-text-muted)]">Searching learning resources…</p>}
+      {loading && <p className="mt-8 text-sm text-[var(--cf-text-muted)]">{t.learn.searching}</p>}
       {error && <p className="mt-8 text-sm">{error}</p>}
       {!loading && !error && results === null && (
         <p className="mt-8 text-sm text-[var(--cf-text-muted)] max-w-[60ch]">
-          Try a search like “grade 8 biology” or browse a level above. Resources come from OpenStax and the Open Textbook
-          Library — free and openly licensed.
+          {t.learn.hint} Resources come from OpenStax and the Open Textbook Library — free and openly licensed.
         </p>
       )}
       {!loading && results?.length === 0 && (
         <div className="mt-8">
-          <p className="font-medium">No learning resources found.</p>
-          <p className="text-sm text-[var(--cf-text-muted)] mt-1">Try a different term or remove some filters.</p>
+          <p className="font-medium">{t.learn.noResults}</p>
+          <p className="text-sm text-[var(--cf-text-muted)] mt-1">{t.learn.hint}</p>
         </div>
       )}
 
       {/* Results */}
       {!loading && results && results.length > 0 && (
         <>
-          <p className="text-sm text-[var(--cf-text-muted)] mt-6 mb-3">About {new Intl.NumberFormat().format(total)} resources</p>
+          <p className="text-sm text-[var(--cf-text-muted)] mt-6 mb-3">{t.search.about} {new Intl.NumberFormat().format(total)} resources</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {results.map((r) => (
               <ResourceCard key={r.id} r={r} />

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 interface SavedItem {
   id: number;
@@ -27,30 +28,28 @@ interface HistoryItem {
 
 type Tab = "saved" | "collections" | "history";
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "saved", label: "Saved" },
-  { key: "collections", label: "Collections" },
-  { key: "history", label: "History" },
-];
+const TABS = ["saved", "collections", "history"] as const;
 
 export function LibraryTabs() {
+  const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("saved");
   return (
     <div>
-      <nav role="tablist" aria-label="Library sections" className="flex gap-1 border-b border-[var(--cf-border)] mb-6">
-        {TABS.map((t) => (
+      <nav role="tablist" aria-label={t.library.title} className="flex gap-1 border-b border-[var(--cf-border)] mb-6">
+        {TABS.map((key) => (
           <button
-            key={t.key}
+            type="button"
+            key={key}
             role="tab"
-            aria-selected={tab === t.key}
-            onClick={() => setTab(t.key)}
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
             className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
-              tab === t.key
+              tab === key
                 ? "border-[var(--cf-accent)] text-[var(--cf-text)] font-medium"
                 : "border-transparent text-[var(--cf-text-muted)] hover:text-[var(--cf-text)]"
             }`}
           >
-            {t.label}
+            {key === "saved" ? t.library.saved : key === "collections" ? t.library.collections : t.library.history}
           </button>
         ))}
       </nav>
@@ -76,41 +75,45 @@ function PaperRow({ title, meta, href, action }: { title: string; meta: string; 
 }
 
 function ReadBtn({ paperKey }: { paperKey: string }) {
+  const { t } = useI18n();
   return (
     <Link
       href={`/paper/${encodeURIComponent(paperKey)}`}
       className="rounded-[8px] border border-[var(--cf-border)] hover:border-[var(--cf-accent)] transition-colors text-xs px-3 py-1.5"
     >
-      Read
+      {t.library.read}
     </Link>
   );
 }
 
 function Loading({ label }: { label: string }) {
-  return <p className="text-sm text-[var(--cf-text-muted)] py-8 animate-pulse">Loading {label}…</p>;
+  const { t } = useI18n();
+  return <p className="text-sm text-[var(--cf-text-muted)] py-8 animate-pulse">{t.common.loading} {label}…</p>;
 }
 
 function ErrorState({ retry }: { retry: () => void }) {
+  const { t } = useI18n();
   return (
     <div className="py-10 text-center">
-      <p className="text-sm mb-4">We couldn&apos;t load this right now. Please try again.</p>
-      <button onClick={retry} className="rounded-[8px] border border-[var(--cf-border)] hover:border-[var(--cf-accent)] transition-colors text-sm px-4 py-2">
-        Retry
+      <p className="text-sm mb-4">{t.common.retry}</p>
+      <button type="button" onClick={retry} className="rounded-[8px] border border-[var(--cf-border)] hover:border-[var(--cf-accent)] transition-colors text-sm px-4 py-2">
+        {t.common.retry}
       </button>
     </div>
   );
 }
 
 function EmptySaved() {
+  const { t } = useI18n();
   return (
     <div className="py-16 text-center">
-      <h2 className="font-medium mb-1.5">Your library is empty.</h2>
-      <p className="text-sm text-[var(--cf-text-muted)] mb-6">Save papers while exploring Cogniflux.</p>
+      <h2 className="font-medium mb-1.5">{t.library.emptySaved}</h2>
+      <p className="text-sm text-[var(--cf-text-muted)] mb-6">{t.library.saveWhile}</p>
       <Link
         href="/explore"
         className="inline-block rounded-[10px] bg-[var(--cf-accent)] hover:bg-[var(--cf-accent-strong)] transition text-white text-sm font-medium px-5 py-2.5"
       >
-        Explore papers
+        {t.library.explore}
       </Link>
     </div>
   );
@@ -118,6 +121,7 @@ function EmptySaved() {
 
 /* ---------------- Saved ---------------- */
 function SavedList() {
+  const { t } = useI18n();
   const [items, setItems] = useState<SavedItem[] | null>(null);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -139,7 +143,11 @@ function SavedList() {
   async function remove(paperKey: string) {
     setBusy(paperKey);
     try {
-      await fetch(`/api/library?paperKey=${encodeURIComponent(paperKey)}`, { method: "DELETE" });
+      const res = await fetch(`/api/library?paperKey=${encodeURIComponent(paperKey)}`, { method: "DELETE" });
+      if (!res.ok) {
+        setError(true);
+        return;
+      }
       setItems((prev) => prev?.filter((i) => i.paper_key !== paperKey) ?? null);
     } finally {
       setBusy(null);
@@ -147,7 +155,7 @@ function SavedList() {
   }
 
   if (error) return <ErrorState retry={load} />;
-  if (!items) return <Loading label="your saved papers" />;
+  if (!items) return <Loading label={t.library.saved.toLowerCase()} />;
   if (items.length === 0) return <EmptySaved />;
 
   return (
@@ -156,18 +164,19 @@ function SavedList() {
         <PaperRow
           key={it.paper_key}
           title={it.title ?? it.paper_key}
-          meta={[it.first_author, it.year].filter(Boolean).join(" · ") || "Unknown source"}
+          meta={[it.first_author, it.year].filter(Boolean).join(" · ") || t.library.unknownSource}
           href={`/paper/${encodeURIComponent(it.paper_key)}`}
           action={
             <>
               <ReadBtn paperKey={it.paper_key} />
               <button
+                type="button"
                 onClick={() => remove(it.paper_key)}
                 disabled={busy === it.paper_key}
-                aria-label={`Remove ${it.title ?? "paper"} from library`}
+                aria-label={`${t.library.remove}: ${it.title ?? "paper"}`}
                 className="rounded-[8px] border border-transparent hover:border-[var(--cf-border)] transition-colors text-xs px-2.5 py-1.5 text-[var(--cf-text-muted)] disabled:opacity-40"
               >
-                Remove
+                {t.library.remove}
               </button>
             </>
           }
@@ -179,12 +188,15 @@ function SavedList() {
 
 /* ---------------- Collections ---------------- */
 function CollectionsPanel() {
+  const { t } = useI18n();
   const [items, setItems] = useState<Collection[] | null>(null);
   const [error, setError] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const [renaming, setRenaming] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [actionBusy, setActionBusy] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(false);
@@ -204,6 +216,7 @@ function CollectionsPanel() {
     e.preventDefault();
     if (!name.trim()) return;
     setCreating(true);
+    setActionError(null);
     try {
       const res = await fetch("/api/collections", {
         method: "POST",
@@ -213,6 +226,9 @@ function CollectionsPanel() {
       if (res.ok) {
         setName("");
         await load();
+      } else {
+        const data = await res.json().catch(() => null);
+        setActionError(data?.message ?? "Could not create the collection.");
       }
     } finally {
       setCreating(false);
@@ -221,31 +237,54 @@ function CollectionsPanel() {
 
   async function rename(id: number) {
     if (!renameValue.trim()) return;
-    await fetch(`/api/collections/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: renameValue.trim() }),
-    });
-    setRenaming(null);
-    await load();
+    setActionBusy(id);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/collections/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: renameValue.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setActionError(data?.message ?? "Could not rename the collection.");
+        return;
+      }
+      setRenaming(null);
+      await load();
+    } finally {
+      setActionBusy(null);
+    }
   }
 
   async function remove(id: number) {
-    await fetch(`/api/collections/${id}`, { method: "DELETE" });
-    setItems((prev) => prev?.filter((c) => c.id !== id) ?? null);
+    setActionBusy(id);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/collections/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setActionError(data?.message ?? "Could not delete the collection.");
+        return;
+      }
+      setItems((prev) => prev?.filter((c) => c.id !== id) ?? null);
+    } finally {
+      setActionBusy(null);
+    }
   }
 
   if (error) return <ErrorState retry={load} />;
 
   return (
     <div>
+      {actionError && <p role="alert" className="mb-4 text-sm text-red-600 dark:text-red-400">{actionError}</p>}
       <form onSubmit={create} className="flex gap-2 mb-6 max-w-md">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="New collection name…"
+          placeholder={t.library.newCollection}
           maxLength={100}
-          aria-label="New collection name"
+          aria-label={t.library.newCollection}
           className="flex-1 rounded-[10px] border border-[var(--cf-border)] bg-transparent px-3.5 py-2 text-sm outline-none focus:border-[var(--cf-accent)] transition-colors"
         />
         <button
@@ -253,16 +292,16 @@ function CollectionsPanel() {
           disabled={creating || !name.trim()}
           className="rounded-[10px] bg-[var(--cf-accent)] hover:bg-[var(--cf-accent-strong)] transition text-white text-sm font-medium px-4 disabled:opacity-40"
         >
-          Create
+          {t.common.create}
         </button>
       </form>
 
       {!items ? (
-        <Loading label="your collections" />
+        <Loading label={t.library.collections.toLowerCase()} />
       ) : items.length === 0 ? (
         <div className="py-16 text-center">
-          <h2 className="font-medium mb-1.5">No collections yet.</h2>
-          <p className="text-sm text-[var(--cf-text-muted)]">Group papers by topic or project — like &quot;Thesis reading list&quot;.</p>
+          <h2 className="font-medium mb-1.5">{t.library.noCollections}</h2>
+          <p className="text-sm text-[var(--cf-text-muted)]">{t.library.collectionExample}</p>
         </div>
       ) : (
         items.map((c) =>
@@ -273,14 +312,14 @@ function CollectionsPanel() {
                 onChange={(e) => setRenameValue(e.target.value)}
                 maxLength={100}
                 autoFocus
-                aria-label="Collection name"
+                aria-label={t.library.collectionName}
                 className="flex-1 rounded-[10px] border border-[var(--cf-border)] bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--cf-accent)]"
               />
-              <button onClick={() => rename(c.id)} className="text-sm text-[var(--cf-accent-strong)] hover:underline px-2">
-                Save
+              <button type="button" onClick={() => rename(c.id)} disabled={actionBusy === c.id} className="text-sm text-[var(--cf-accent-strong)] hover:underline px-2 disabled:opacity-50">
+                {actionBusy === c.id ? t.common.loading : t.common.save}
               </button>
-              <button onClick={() => setRenaming(null)} className="text-sm text-[var(--cf-text-muted)] hover:underline px-2">
-                Cancel
+              <button type="button" onClick={() => setRenaming(null)} className="text-sm text-[var(--cf-text-muted)] hover:underline px-2">
+                {t.common.cancel}
               </button>
             </div>
           ) : (
@@ -288,24 +327,27 @@ function CollectionsPanel() {
               <div className="min-w-0">
                 <p className="font-medium truncate">{c.name}</p>
                 <p className="text-sm text-[var(--cf-text-muted)]">
-                  {c.paperCount} {c.paperCount === 1 ? "paper" : "papers"}
+                  {c.paperCount} {c.paperCount === 1 ? t.library.papersOne : t.library.papersMany}
                 </p>
               </div>
               <div className="shrink-0 flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setRenaming(c.id);
                     setRenameValue(c.name);
                   }}
                   className="rounded-[8px] border border-transparent hover:border-[var(--cf-border)] transition-colors text-xs px-2.5 py-1.5 text-[var(--cf-text-muted)]"
                 >
-                  Rename
+                  {t.common.rename}
                 </button>
                 <button
+                  type="button"
                   onClick={() => remove(c.id)}
-                  className="rounded-[8px] border border-transparent hover:border-red-300 dark:hover:border-red-800 transition-colors text-xs px-2.5 py-1.5 text-[var(--cf-text-muted)] hover:text-red-600 dark:hover:text-red-400"
+                  disabled={actionBusy === c.id}
+                  className="rounded-[8px] border border-transparent hover:border-red-300 dark:hover:border-red-800 transition-colors text-xs px-2.5 py-1.5 text-[var(--cf-text-muted)] hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50"
                 >
-                  Delete
+                  {actionBusy === c.id ? "…" : t.common.delete}
                 </button>
               </div>
             </div>
@@ -318,6 +360,7 @@ function CollectionsPanel() {
 
 /* ---------------- History ---------------- */
 function HistoryList() {
+  const { t } = useI18n();
   const [items, setItems] = useState<HistoryItem[] | null>(null);
   const [error, setError] = useState(false);
 
@@ -336,12 +379,12 @@ function HistoryList() {
   }, [load]);
 
   if (error) return <ErrorState retry={load} />;
-  if (!items) return <Loading label="your history" />;
+  if (!items) return <Loading label={t.library.history.toLowerCase()} />;
   if (items.length === 0)
     return (
       <div className="py-16 text-center">
-        <h2 className="font-medium mb-1.5">No reading history yet.</h2>
-        <p className="text-sm text-[var(--cf-text-muted)]">Papers you open will appear here. Only visible to you.</p>
+        <h2 className="font-medium mb-1.5">{t.library.noHistory}</h2>
+        <p className="text-sm text-[var(--cf-text-muted)]">{t.library.historyHint}</p>
       </div>
     );
 

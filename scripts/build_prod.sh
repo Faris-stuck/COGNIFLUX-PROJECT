@@ -58,4 +58,21 @@ echo
 echo "--- build log tail ---"
 tail -30 "$LOG"
 
+if [ "$BUILD_EXIT" -eq 0 ]; then
+  # systemd runs the app as ubuntu. When this script is invoked as root,
+  # make the standalone artifact writable by the runtime user and stage the
+  # client assets so SSR and browser hydration ship as one deployable unit.
+  if [ "$(id -u)" -eq 0 ]; then
+    chown -R ubuntu:ubuntu .next/standalone .next/static
+  fi
+  mkdir -p .next/standalone/.next
+  rm -rf .next/standalone/.next/static
+  cp -a .next/static .next/standalone/.next/static
+  if [ -d public ]; then
+    rm -rf .next/standalone/public
+    cp -a public .next/standalone/public
+  fi
+  echo "artifact staging: OK"
+fi
+
 exit "$BUILD_EXIT"

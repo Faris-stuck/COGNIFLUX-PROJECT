@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 
 /**
  * Persona onboarding. Shows a dismissible banner for signed-in users who
@@ -41,9 +42,11 @@ const DISMISS_KEY = "cf:persona-dismissed";
 
 export function PersonaOnboarding() {
   const [visible, setVisible] = useState(false);
-  const [locale, setLocale] = useState<"id" | "en">("id");
+
   const [saving, setSaving] = useState<Level | null>(null);
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
+  const { locale } = useI18n();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.localStorage.getItem(DISMISS_KEY)) return;
@@ -54,7 +57,7 @@ export function PersonaOnboarding() {
         if (!alive || !data?.profile) return;
         // Only show when signed in AND no persona chosen yet.
         if (data.profile.level == null) setVisible(true);
-        if (data.profile.locale === "en") setLocale("en");
+        
       })
       .catch(() => {});
     return () => {
@@ -72,13 +75,14 @@ export function PersonaOnboarding() {
   const choose = useCallback(
     async (level: Level) => {
       setSaving(level);
+      setSaveError(null);
       try {
         const res = await fetch("/api/preferences", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ level }),
         });
-        if (!res.ok) return;
+        if (!res.ok) { setSaveError("Could not save your preference. Please try again."); return; }
         const label = PERSONAS.find((p) => p.value === level)?.label ?? "";
         setSavedLabel(label);
         setTimeout(dismiss, 1800);
@@ -131,6 +135,7 @@ export function PersonaOnboarding() {
         {savedLabel && (
           <p className="mt-3 text-sm text-[var(--cf-accent-strong)]">{t.saved(savedLabel)}</p>
         )}
+        {saveError && <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">{saveError}</p>}
       </div>
     </div>
   );

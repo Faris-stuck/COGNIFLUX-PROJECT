@@ -45,7 +45,7 @@ export async function getFullTextDocument(paperId: string, title?: string | null
   try {
     const document = await cached(`cf:paper-fulltext:v1:${paperId}`, CACHE_TTL, async () => {
       const { xml } = await fetchPaperXml(paperId);
-      const doc = normalizeJats(xml, { paperId, providerId: "europepmc" });
+      const doc = await normalizeJats(xml, { paperId, providerId: "europepmc" });
       // Metadata from the search layer is often richer (authors list, year);
       // backfill only fields the JATS front lacks.
       if (!doc.title && title) doc.title = title.slice(0, 500);

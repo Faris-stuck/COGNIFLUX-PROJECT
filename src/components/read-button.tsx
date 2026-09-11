@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 /**
  * [Read] button for Paper Detail. Active only when a supported full-text
@@ -10,6 +11,7 @@ import Link from "next/link";
  */
 export function ReadButton({ paperId }: { paperId: string }) {
   const [state, setState] = useState<"loading" | "available" | "unavailable">("loading");
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +27,7 @@ export function ReadButton({ paperId }: { paperId: string }) {
   if (state === "loading") {
     return (
       <span className="rounded-[10px] border border-[var(--cf-border)] px-4 py-2 text-sm text-[var(--cf-text-muted)] opacity-60">
-        Checking full text…
+        {t.readButton.checking}
       </span>
     );
   }
@@ -33,9 +35,9 @@ export function ReadButton({ paperId }: { paperId: string }) {
     return (
       <span
         className="rounded-[10px] border border-[var(--cf-border)] px-4 py-2 text-sm text-[var(--cf-text-muted)] opacity-60"
-        title="Full text isn't available in Cogniflux for this paper."
+        title={t.readButton.unavailableTitle}
       >
-        Full text unavailable
+        {t.readButton.unavailable}
       </span>
     );
   }
@@ -44,7 +46,7 @@ export function ReadButton({ paperId }: { paperId: string }) {
       href={`/read/${encodeURIComponent(paperId)}`}
       className="rounded-[10px] bg-[var(--cf-accent-strong)] hover:opacity-90 active:scale-[0.98] transition text-white text-sm font-medium px-4 py-2"
     >
-      Read
+      {t.readButton.read}
     </Link>
   );
 }

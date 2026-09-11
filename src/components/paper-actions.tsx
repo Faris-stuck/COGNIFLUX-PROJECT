@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface WorkLite {
   title: string;
@@ -21,6 +22,8 @@ export function PaperActions({ paperKey, work }: { paperKey: string; work: WorkL
   const [saved, setSaved] = useState(false);
   const [hint, setHint] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     let alive = true;
@@ -56,6 +59,7 @@ export function PaperActions({ paperKey, work }: { paperKey: string; work: WorkL
   async function toggle() {
     if (busy) return;
     setBusy(true);
+    setActionError(false);
     try {
       if (!saved) {
         const res = await fetch("/api/library", {
@@ -67,9 +71,11 @@ export function PaperActions({ paperKey, work }: { paperKey: string; work: WorkL
           setAuthed(false);
           return;
         }
-        setSaved(res.ok);
+        if (!res.ok) { setActionError(true); return; }
+        setSaved(true);
       } else {
-        await fetch(`/api/library?paperKey=${encodeURIComponent(paperKey)}`, { method: "DELETE" });
+        const res = await fetch(`/api/library?paperKey=${encodeURIComponent(paperKey)}`, { method: "DELETE" });
+        if (!res.ok) { setActionError(true); return; }
         setSaved(false);
       }
     } finally {
@@ -83,17 +89,16 @@ export function PaperActions({ paperKey, work }: { paperKey: string; work: WorkL
     return (
       <span className="relative inline-flex items-center gap-2">
         <button
+          type="button"
           onClick={() => setHint((h) => !h)}
           className="rounded-[10px] border border-[var(--cf-border)] hover:border-[var(--cf-accent)] transition-colors text-sm px-4 py-2"
         >
-          Save
+          {t.common.save}
         </button>
         {hint && (
           <span role="status" className="absolute top-full mt-2 left-0 whitespace-nowrap text-xs bg-[var(--cf-surface-raised,var(--cf-surface))] border border-[var(--cf-border)] rounded-[8px] px-3 py-1.5 shadow-sm z-10">
-            Sign in to save papers — it&apos;s free.{" "}
-            <a href="/login" className="text-[var(--cf-accent-strong)] underline">
-              Sign in
-            </a>
+            {t.common.signInToSave}.
+            <span className="ml-1"><a href="/login" className="text-[var(--cf-accent-strong)] underline">{t.nav.signIn}</a></span>
           </span>
         )}
       </span>
@@ -102,6 +107,7 @@ export function PaperActions({ paperKey, work }: { paperKey: string; work: WorkL
 
   return (
     <button
+      type="button"
       onClick={toggle}
       disabled={busy}
       aria-pressed={saved}
@@ -111,7 +117,7 @@ export function PaperActions({ paperKey, work }: { paperKey: string; work: WorkL
           : "border-[var(--cf-border)] hover:border-[var(--cf-accent)]"
       } disabled:opacity-50`}
     >
-      {busy ? "…" : saved ? "Saved ✓" : "Save"}
+      {busy ? "…" : saved ? t.common.saved : actionError ? t.common.retry : t.common.save}
     </button>
   );
 }

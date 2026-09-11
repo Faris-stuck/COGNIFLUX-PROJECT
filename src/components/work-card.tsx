@@ -1,7 +1,11 @@
+"use client";
+
 import type { Work } from "@/lib/types";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 export function WorkCard({ work }: { work: Work }) {
+  const { t } = useI18n();
   return (
     <article className="py-5 border-b border-[var(--cf-border)] last:border-b-0">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--cf-text-muted)] mb-1.5">
@@ -10,7 +14,7 @@ export function WorkCard({ work }: { work: Work }) {
         <span className="uppercase tracking-wide">{work.type.replace("-", " ")}</span>
         {work.openAccess.isOa && (
           <span className="rounded-full px-2 py-0.5 bg-[color-mix(in_srgb,var(--cf-accent)_12%,transparent)] text-[var(--cf-accent-strong)] font-medium">
-            Open access
+            {work.openAccess.isOa ? t.paper.pdf : ""}
           </span>
         )}
         {work.citationCount != null && work.citationCount > 0 && <span>{work.citationCount.toLocaleString("id-ID")} citations</span>}

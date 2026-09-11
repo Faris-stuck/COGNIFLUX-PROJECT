@@ -92,7 +92,7 @@ describe("Reader full-text API", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("data-anchor");
-    expect(html.toLowerCase()).toContain("contents");
+    expect(["contents", "daftar isi"].some((x) => html.toLowerCase().includes(x))).toBe(true);
   }, 90_000);
 });
 
@@ -187,6 +187,23 @@ describe("Regression guards", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(Array.isArray(data.data?.works ?? data.works)).toBe(true);
+  }, 60_000);
+
+  it("search result DOI resolves to paper detail", async () => {
+    const search = await fetch(`${BASE}/api/search?q=machine%20learning&perPage=1`);
+    expect(search.status).toBe(200);
+    const data = await search.json();
+    const works = data.data?.works ?? data.works;
+    expect(Array.isArray(works)).toBe(true);
+    expect(works.length).toBeGreaterThan(0);
+    const id = works[0].id as string;
+    expect(id.startsWith("doi:")).toBe(true);
+
+    const detail = await fetch(`${BASE}/api/papers/${encodeURIComponent(id)}`);
+    expect(detail.status).toBe(200);
+    const work = await detail.json();
+    expect(work.id).toBe(id);
+    expect(typeof work.title).toBe("string");
   }, 60_000);
 
   it("paper detail page still renders", async () => {

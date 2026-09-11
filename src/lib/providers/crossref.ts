@@ -93,7 +93,7 @@ export function normalizeCrossref(item: CrossrefItem): Work | null {
 export class CrossrefProvider implements AcademicProvider {
   readonly id = "crossref";
   readonly timeoutMs = 8000;
-  readonly capabilities = { ...NO_CAPABILITIES, search: true };
+  readonly capabilities = { ...NO_CAPABILITIES, search: true, getWork: true };
 
   async search(params: SearchParams): Promise<SearchResult> {
     const doiMatch = params.q.trim().match(/^(10\.\d{4,9}\/\S+)$/i);
@@ -128,7 +128,17 @@ export class CrossrefProvider implements AcademicProvider {
     };
   }
 
-  async getWork(_id: string): Promise<Work | null> {
-    throw new ProviderUnsupported(this.id, "getWork");
+  async getWork(id: string): Promise<Work | null> {
+    if (!id.startsWith("doi:")) return null;
+    const doi = id.slice(4).trim();
+    if (!doi) return null;
+
+    const res = await fetch(`${BASE}/works/${doi}`, {
+      signal: AbortSignal.timeout(this.timeoutMs),
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { message?: CrossrefItem };
+    return data.message ? normalizeCrossref(data.message) : null;
   }
 }

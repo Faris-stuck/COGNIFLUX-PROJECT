@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 type Mode = "login" | "register";
 
@@ -12,6 +13,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,13 +27,13 @@ export function AuthForm({ mode }: { mode: Mode }) {
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string };
       if (!res.ok) {
-        setError(data.message ?? "Something went wrong. Please try again.");
+        setError(data.message ?? t.common.tryAgain);
         return;
       }
       router.push("/library");
       router.refresh();
     } catch {
-      setError("Network error. Please check your connection and try again.");
+      setError(t.common.tryAgain);
     } finally {
       setLoading(false);
     }
@@ -40,17 +42,17 @@ export function AuthForm({ mode }: { mode: Mode }) {
   return (
     <div className="max-w-sm mx-auto px-4 py-20">
       <h1 className="text-2xl font-semibold tracking-tight mb-1">
-        {mode === "login" ? "Welcome back." : "Create your account."}
+        {mode === "login" ? t.auth.welcome : t.auth.createTitle}
       </h1>
       <p className="text-sm text-[var(--cf-text-muted)] mb-8">
         {mode === "login"
-          ? "Sign in to your library, collections, and notes."
-          : "Free forever for core features. Search and read without an account too."}
+          ? t.auth.loginText
+          : t.auth.registerText}
       </p>
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <div>
-          <label htmlFor="email" className="block text-sm mb-1.5">Email</label>
+          <label htmlFor="email" className="block text-sm mb-1.5">{t.auth.email}</label>
           <input
             id="email"
             type="email"
@@ -62,7 +64,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           />
         </div>
         <div>
-          <label htmlFor="password" className="block text-sm mb-1.5">Password</label>
+          <label htmlFor="password" className="block text-sm mb-1.5">{t.auth.password}</label>
           <input
             id="password"
             type="password"
@@ -76,7 +78,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           />
           {mode === "register" && (
             <p id="pw-hint" className="text-xs text-[var(--cf-text-muted)] mt-1.5">
-              At least 8 characters with a letter and a number.
+              {t.auth.passwordHint}
             </p>
           )}
         </div>
@@ -92,23 +94,23 @@ export function AuthForm({ mode }: { mode: Mode }) {
           disabled={loading || !email || !password}
           className="w-full rounded-[10px] bg-[var(--cf-accent)] hover:bg-[var(--cf-accent-strong)] active:scale-[0.99] transition text-white text-sm font-medium py-2.5 disabled:opacity-50 disabled:pointer-events-none"
         >
-          {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
+          {loading ? t.auth.wait : mode === "login" ? t.auth.signIn : t.auth.create}
         </button>
       </form>
 
       <p className="text-sm text-[var(--cf-text-muted)] mt-6">
         {mode === "login" ? (
           <>
-            New here?{" "}
+            {t.auth.newHere}{" "}
             <Link href="/login?mode=register" className="text-[var(--cf-accent-strong)] hover:underline">
-              Create an account
+              {t.auth.createAccount}
             </Link>
           </>
         ) : (
           <>
-            Already have an account?{" "}
+            {t.auth.already}{" "}
             <Link href="/login" className="text-[var(--cf-accent-strong)] hover:underline">
-              Sign in
+              {t.auth.signIn}
             </Link>
           </>
         )}

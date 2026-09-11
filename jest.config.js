@@ -6,6 +6,7 @@ module.exports = {
   // Integration tests drive the live dev server over HTTP (~20 sequential
   // requests for the IDOR isolation case); 5s default is not a real signal.
   testTimeout: 60000,
+  setupFilesAfterEnv: ["<rootDir>/tests/jest.setup.ts"],
   moduleNameMapper: { "^@/(.*)$": "<rootDir>/src/$1" },
   transform: {
     "^.+\\.tsx?$": ["ts-jest", { tsconfig: { esModuleInterop: true, target: "ES2022" } }],

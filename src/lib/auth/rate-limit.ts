@@ -26,9 +26,36 @@ export async function rateLimit(
   }
 }
 
-/** Best-effort client identity for rate limiting. Not used for authorization. */
+/**
+ * Best-effort client identity for rate limiting. Not used for authorization.
+ *
+ * HEADER TRUST ORDER (important — do not reorder):
+ *   1. cf-connecting-ip  Cloudflare OVERWRITES this on every proxied request,
+ *                        so a client cannot forge it while traffic goes through
+ *                        the CF edge.
+ *   2. x-real-ip         set by our own nginx to $remote_addr, which the
+ *                        cloudflare-realip snippet has already resolved to the
+ *                        true visitor IP.
+ *   3. x-forwarded-for   LAST RESORT ONLY. Cloudflare APPENDS to an inbound XFF
+ *                        instead of replacing it, so a request carrying
+ *                        `X-Forwarded-For: 1.2.3.4` arrives as "1.2.3.4, <real>".
+ *                        Reading the first element therefore let a caller pick an
+ *                        arbitrary rate-limit bucket per request and bypass the
+ *                        limiter entirely. When we must fall back to XFF we take
+ *                        the LAST element, which is the hop nearest to us and the
+ *                        only one an attacker cannot control.
+ */
 export function clientIp(req: Request): string {
+  const cf = req.headers.get("cf-connecting-ip")?.trim();
+  if (cf) return cf;
+
+  const real = req.headers.get("x-real-ip")?.trim();
+  if (real) return real;
+
   const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "local";
+  if (fwd) {
+    const parts = fwd.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
+  return "local";
 }
