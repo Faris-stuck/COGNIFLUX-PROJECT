@@ -1,6 +1,6 @@
 # COGNIFLUX — Roadmap
 
-Status verified against `master` (commits 0317475, 2e345e7, 6a56311).
+Status verified against `main` (through Phase 7 commits, 2026-09-11).
 
 ## Done
 - **v0.1 foundation**: provider abstraction (OpenAlex + Crossref), parallel search
@@ -10,17 +10,23 @@ Status verified against `master` (commits 0317475, 2e345e7, 6a56311).
   bookmarks / collections / notes / highlights / history APIs; IDOR-tested.
 - **Phase 5 — Education**: OpenStax + OER (OTL) adapters behind the provider interface,
   bilingual content classifier, taxonomy / search / resource APIs.
-- **Phase 6 — Scientific Reader** (just committed): Europe PMC JATS full-text retrieval,
+- **Phase 6 — Scientific Reader**: Europe PMC JATS full-text retrieval,
   sanitized `/read/[paperId]` view, reuses library highlights/notes (no migration).
-- Tests: 86 total (suite being repaired in parallel toward 86/86).
-- Infra today: single `next dev -p 3100` process, PostgreSQL local (25 tables,
-  backups at `~/backups/cogniflux/` via `scripts/backup_db.sh`), Redis local healthy.
+- **Phase 7 — Indonesia Learning** (2026-09, committed `63ac7b2`+`c621373`): `/persiapan`
+  program catalog, practice/tryout engine with attempt-integrity migrations (002–005),
+  CMS + site navigation, bilingual ID/EN i18n layer (locale cookie, switcher, page
+  translator), SEO robots/sitemap, question-source ingestion scripts.
+- **Stability**: `/health` + `/readyz` probes live in prod.
+- Tests: **87/87 green** (6 suites) + `npm run verify` gate (typecheck + unit + contract).
+- Infra today: production standalone build behind nginx + Cloudflare at
+  https://cogniflux.web.id (systemd `cogniflux.service`, Node 22 pinned), PostgreSQL
+  local (40 tables, backups via `scripts/backup_db.sh`), Redis local healthy.
 
 ## Next (priority order)
-1. **Stability**: repair test suite to green (86/86); add `/api/health`; introduce
-   requestId-scoped JSON log lines.
-2. **Health endpoints**: `/api/health` (app) + `/api/health/deep` (PG/Redis/providers) —
-   see `docs/OPERATIONS.md`.
+1. ~~Stability~~ done except: requestId-scoped JSON log lines.
+2. ~~Health endpoints~~ done (`/health`, `/readyz`).
+2b. **Phase 7 test coverage**: unit + integration tests for prep engine, preparation
+   APIs (IDOR), i18n dictionaries — none exist yet.
 3. **Persona layer**: per-user research persona/profile feeding personalization.
 4. **AI layer / ModelLayer**: LLM-provider-agnostic abstraction (intent → retrieval →
    evidence-grounded response). Not started.
@@ -35,12 +41,10 @@ Status verified against `master` (commits 0317475, 2e345e7, 6a56311).
 ## Known gaps (intentional, not silent)
 | Area | State |
 |---|---|
-| Production build | NOT built — dev server only. Do **not** run `npm run build` while `next dev -p 3100` holds `.next/`. Stop dev first. |
+| Phase 7 test coverage | No unit/integration tests yet for prep/i18n/CMS |
 | AI layer / ModelLayer | Not implemented |
-| Research workspace UI | Described, not wired |
 | Admin panel | Not implemented |
 | Worker/scheduler processes | None running (provider-health recording unscheduled) |
 | Cross-language expansion | Not implemented |
 | Canonical paper store | Not implemented |
-| Reverse proxy / TLS / domain | Not configured |
-| CI | None |
+| CI | None (GitHub Actions blocked for this account's private repos; repo is public — verify locally via `npm run verify`) |
