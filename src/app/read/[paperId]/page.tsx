@@ -5,6 +5,7 @@ import { getFullTextDocument } from "@/lib/reader/service";
 import { getPool } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
 import { Reader, type ReaderDoc } from "@/components/reader";
+import { getServerLocale, getDict } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     /* keep raw */
   }
   const { doc } = await loadReaderDoc(id);
-  return { title: doc?.title ? `${doc.title} — Cogniflux Reader` : "Reader — Cogniflux" };
+  const t = await getDict(await getServerLocale());
+  return { title: doc?.title ? `${doc.title} — ${t.reader.reader}` : `${t.reader.reader}` };
 }
 
 export default async function ReadPage({ params }: Props) {
@@ -52,14 +54,15 @@ export default async function ReadPage({ params }: Props) {
   }
 
   const { result, doc } = await loadReaderDoc(id);
+  const t = await getDict(await getServerLocale());
 
   // Unknown upstream failure with nothing to show.
   if (!doc && (result.reason === "upstream_error" || result.reason === "bad_response")) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-24 text-center">
-        <h1 className="text-xl font-semibold">Full text couldn&apos;t be loaded right now.</h1>
-        <p className="mt-2 text-sm text-[var(--cf-text-muted)]">The source may be temporarily unavailable.</p>
-        <RetryButtons paperId={id} />
+        <h1 className="text-xl font-semibold">{t.readerPage.loadingFailed}</h1>
+        <p className="mt-2 text-sm text-[var(--cf-text-muted)]">{t.readerPage.sourceDown}</p>
+        <RetryButtons paperId={id} t={t} />
       </div>
     );
   }
@@ -68,14 +71,13 @@ export default async function ReadPage({ params }: Props) {
     // Genuinely unavailable full text - be honest about it.
     return (
       <div className="mx-auto max-w-2xl px-4 py-24 text-center">
-        <h1 className="text-xl font-semibold">Full text isn&apos;t available in Cogniflux for this paper.</h1>
+        <h1 className="text-xl font-semibold">{t.readerPage.unavailable}</h1>
         <p className="mt-2 text-sm leading-relaxed text-[var(--cf-text-muted)]">
-          Open-access structured full text is currently sourced from Europe PMC. This paper either has no open
-          full-text deposit or is outside its coverage.
+          {t.readerPage.unavailableText}
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <Link href="/" className="text-sm font-medium text-[var(--cf-accent-strong)] hover:underline">
-            Back to search
+            {t.readerPage.back}
           </Link>
         </div>
       </div>
@@ -109,17 +111,17 @@ export default async function ReadPage({ params }: Props) {
   );
 }
 
-function RetryButtons({ paperId }: { paperId: string }) {
+function RetryButtons({ paperId, t }: { paperId: string; t: Awaited<ReturnType<typeof getDict>> }) {
   return (
     <div className="mt-6 flex items-center justify-center gap-3">
       <Link
         href={`/read/${encodeURIComponent(paperId)}`}
         className="rounded-full bg-[var(--cf-accent-strong)] px-4 py-1.5 text-sm font-medium text-white"
       >
-        Retry
+        {t.readerPage.retry}
       </Link>
       <Link href="/" className="text-sm text-[var(--cf-text-muted)] hover:underline">
-        Back to search
+        {t.readerPage.back}
       </Link>
     </div>
   );

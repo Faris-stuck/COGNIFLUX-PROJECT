@@ -1,8 +1,11 @@
 import type { Work } from "@/lib/types";
 import { PaperActions } from "@/components/paper-actions";
 import { ReadButton } from "@/components/read-button";
+import { BackButton } from "@/components/back-button";
+import { internalFetch } from "@/lib/internal-fetch";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { getServerLocale, getDict } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +14,9 @@ interface Props {
 }
 
 async function fetchWork(id: string): Promise<Work | null> {
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3100";
   try {
-    const res = await fetch(`${origin}/api/papers/${encodeURIComponent(id)}`, { cache: "no-store" });
+    // Loopback + forwarded visitor identity: see src/lib/internal-fetch.ts.
+    const res = await internalFetch(`/api/papers/${encodeURIComponent(id)}`, { cache: "no-store" });
     if (!res.ok) return null;
     return (await res.json()) as Work;
   } catch {
@@ -24,7 +27,8 @@ async function fetchWork(id: string): Promise<Work | null> {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const work = await fetchWork(id);
-  return { title: work?.title ?? "Paper not found" };
+  const t = await getDict(await getServerLocale());
+  return { title: work?.title ?? t.paper.notFoundTitle };
 }
 
 export default async function PaperPage({ params }: Props) {
@@ -36,16 +40,17 @@ export default async function PaperPage({ params }: Props) {
     /* keep raw */
   }
   const work = await fetchWork(decoded);
+  const t = await getDict(await getServerLocale());
 
   if (!work) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-24 text-center">
-        <h1 className="text-xl font-semibold mb-2">We couldn&apos;t find this paper.</h1>
+        <h1 className="text-xl font-semibold mb-2">{t.paper.notFoundTitle}</h1>
         <p className="text-sm text-[var(--cf-text-muted)] mb-8">
-          It may have been removed from the source, or the link is incorrect.
+          {t.paper.notFoundText}
         </p>
         <Link href="/" className="text-sm font-medium text-[var(--cf-accent-strong)] hover:underline">
-          Back to search
+          {t.paper.backSearch}
         </Link>
       </div>
     );
@@ -53,9 +58,7 @@ export default async function PaperPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <Link href="javascript:history.back()" className="text-sm text-[var(--cf-text-muted)] hover:text-[var(--cf-text)] mb-6 inline-block">
-        Back
-      </Link>
+      <BackButton />
 
       <header className="mb-8">
         {work.journal && (
@@ -90,7 +93,7 @@ export default async function PaperPage({ params }: Props) {
             rel="noopener noreferrer"
             className="rounded-[10px] bg-[var(--cf-accent)] hover:bg-[var(--cf-accent-strong)] active:scale-[0.98] transition text-white text-sm font-medium px-4 py-2"
           >
-            Read at source
+            {t.common.open}
           </a>
         )}
         {work.openAccess.isOa && work.openAccess.url && (
@@ -100,24 +103,24 @@ export default async function PaperPage({ params }: Props) {
             rel="noopener noreferrer"
             className="rounded-[10px] border border-[var(--cf-border)] hover:border-[var(--cf-accent)] transition-colors text-sm px-4 py-2"
           >
-            Open-access PDF
+            {t.paper.pdf}
           </a>
         )}
         {work.citationCount != null && work.citationCount > 0 && (
-          <span className="text-sm text-[var(--cf-text-muted)]">{work.citationCount.toLocaleString("id-ID")} citations</span>
+          <span className="text-sm text-[var(--cf-text-muted)]">{work.citationCount.toLocaleString("id-ID")} {t.paper.citations}</span>
         )}
       </div>
 
       {work.abstract && (
         <section className="mb-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--cf-text-muted)] mb-2">Abstract</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--cf-text-muted)] mb-2">{t.paper.abstract}</h2>
           <p className="leading-relaxed max-w-[70ch]">{work.abstract}</p>
         </section>
       )}
 
       {work.subjects.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--cf-text-muted)] mb-2">Subjects</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--cf-text-muted)] mb-2">{t.paper.subjects}</h2>
           <ul className="flex flex-wrap gap-2">
             {work.subjects.map((s) => (
               <li key={s} className="rounded-full border border-[var(--cf-border)] px-3 py-1 text-xs text-[var(--cf-text-muted)]">
@@ -130,16 +133,16 @@ export default async function PaperPage({ params }: Props) {
 
       <section className="border-t border-[var(--cf-border)] pt-6 grid sm:grid-cols-2 gap-x-8 gap-y-2 text-sm">
         <Meta label="DOI" value={work.doi ? <code className="font-mono text-xs">{work.doi}</code> : null} />
-        <Meta label="Type" value={work.type.replace("-", " ")} />
-        <Meta label="Language" value={work.language ?? null} />
+        <Meta label={t.paper.type} value={work.type.replace("-", " ")} />
+        <Meta label={t.paper.language} value={work.language ?? null} />
         <Meta
-          label="Sources"
+          label={t.paper.sources}
           value={
             <>
               {work.sources.join(", ")}
               {!work.openAccess.isOa && (
                 <span className="block text-xs text-[var(--cf-text-muted)] mt-1">
-                  Full text availability depends on the source. Check &quot;Read at source&quot; for access options.
+                  {t.paper.fullTextHint}
                 </span>
               )}
             </>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { EducationSearchParamsSchema, EDUCATION_SUBJECTS, EDUCATION_LEVELS } from "@/lib/education/types";
+import { EducationSearchParamsSchema } from "@/lib/education/types";
 import { withRequestId } from "@/lib/observability";
+import { rateLimit, clientIp } from "@/lib/auth/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +10,22 @@ export const dynamic = "force-dynamic";
  * &yearFrom=&yearTo=&page=&perPage=
  * Orchestrated education search: parallel providers -> dedup -> rank.
  * Wrapped in withRequestId: emits one JSON access-log line + x-request-id header.
+ *
+ * Rate limited (90 req / 60 s / IP): a miss fans out to OpenStax + Open Textbook
+ * Library. Same reasoning as /api/search — protect shared upstream quota.
  */
+const SEARCH_LIMIT = 90;
+const SEARCH_WINDOW_S = 60;
+
 export const GET = withRequestId(async (req: NextRequest) => {
+  const rl = await rateLimit(`edu-search:${clientIp(req)}`, SEARCH_LIMIT, SEARCH_WINDOW_S);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited", message: "Too many searches. Please wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? SEARCH_WINDOW_S) } }
+    );
+  }
+
   const sp = req.nextUrl.searchParams;
   const list = (k: string) => sp.getAll(k).flatMap((v) => v.split(",")).filter(Boolean);
   const parsed = EducationSearchParamsSchema.safeParse({

@@ -1,0 +1,1 @@
+import {NextResponse} from "next/server";import {getRecommendations} from "@/lib/prep-practice";export const dynamic="force-dynamic";export async function GET(){return NextResponse.json(await getRecommendations())}

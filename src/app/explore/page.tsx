@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { getServerLocale, getDict } from "@/lib/i18n-server";
 
-export default function ExplorePage() {
+export default async function ExplorePage() {
+  const t = await getDict(await getServerLocale());
   const topics = [
     "artificial intelligence", "climate change", "public health", "machine learning",
     "renewable energy", "neuroscience", "education technology", "microbiology",
@@ -8,8 +10,8 @@ export default function ExplorePage() {
   ];
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight mb-2">Explore</h1>
-      <p className="text-sm text-[var(--cf-text-muted)] mb-10">Browse active research topics across open science.</p>
+      <h1 className="text-2xl font-semibold tracking-tight mb-2">{t.nav.explore}</h1>
+      <p className="text-sm text-[var(--cf-text-muted)] mb-10">{t.home.description}</p>
       <div role="list" className="flex flex-wrap gap-2">
         {topics.map((t) => (
           <Link

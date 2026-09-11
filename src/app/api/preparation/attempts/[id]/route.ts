@@ -1,0 +1,1 @@
+import {NextResponse} from "next/server";import {getAttempt} from "@/lib/prep-practice";export const dynamic="force-dynamic";export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const {id}=await params;const x=await getAttempt(id);return x?NextResponse.json(x):NextResponse.json({error:'not_found'},{status:404})}

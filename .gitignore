@@ -7,3 +7,6 @@ out/
 coverage/
 *.tsbuildinfo
 HERMES.md/
+
+HERMES.md
+*.tmp
