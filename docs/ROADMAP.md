@@ -37,21 +37,30 @@ Status verified against `main` (through Phase 7 commits, 2026-09-11).
 4. ~~AI layer / ModelLayer~~ **done Phase 8 (2026-09-12)**: provider-agnostic
    `src/lib/models/` (ZRouter OpenAI-compat + NullProvider), grounded `/ask`
    + `/api/ask` with citation validation, rate limit 12/60s, search-only
-   degrade path. Live at cogniflux.web.id/ask. Next in-layer: multi-turn,
-   `ai_queries` usage logging table (needs migration — ask first).
-5. **Admin panel**: provider health dashboard (latency/error tracking already shaped
+   degrade path. Live at cogniflux.web.id/ask.
+4b. ~~Multi-turn + usage logging~~ **done Phase 10 (2026-09-12)**:
+   `ai_queries` audit table (migration 006; sequence-grant pitfall fixed),
+   server-side conversations for signed-in users only (IDOR-guarded),
+   `/api/ask/history`, thread UI in AskPanel. Gate **134 tests**.
+   Remaining: conversation list/rename UI once usage proves demand.
+5. **Question bank (Phase 10c)**: 29 ingested TKA questions reviewed deterministically
+   (scripts/promote_official_questions.mjs) → **22 live single-choice**
+   (was 3). 7 multiple_response parked (answer engine is single-option;
+   needs multi-select grading + `answer_option_ids[]`). 1 sebab-akibat
+   parked (needs PGK 4-option mapping).
+6. **Admin panel**: provider health dashboard (latency/error tracking already shaped
    in schema), rate-limit observability.
-6. **Deploy hardening**: production build (`next build`) + standalone `next start`
+7. **Deploy hardening**: production build (`next build`) + standalone `next start`
    behind nginx/caddy reverse proxy with TLS via Cloudflare; PM2/systemd unit;
    CI pipeline. See `docs/DEPLOYMENT.md`.
-7. Later: cross-language query expansion, canonical paper store, worker/scheduler
+8. Later: cross-language query expansion, canonical paper store, worker/scheduler
    processes (provider health recording job), research workspace UI wiring.
 
 ## Known gaps (intentional, not silent)
 | Area | State |
 |---|---|
 | Phase 7 test coverage | Integration 12/12 green; CMS/IDOR-with-account cases still thin |
-| AI layer / ModelLayer | v1 shipped (single-turn, grounded); multi-turn + usage logging pending |
+| AI layer / ModelLayer | v2 shipped: multi-turn (auth-only), usage audit in ai_queries |
 | Admin panel | Not implemented |
 | Worker/scheduler processes | None running (provider-health recording unscheduled) |
 | Cross-language expansion | Not implemented |
