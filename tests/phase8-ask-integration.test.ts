@@ -7,17 +7,21 @@
 const BASE = process.env.BASE_URL ?? "http://localhost:3100";
 export {};
 
+// Unique per-run client IP so the shared 12/60s ask limiter never carries
+// over from a previous invocation of this file.
+const RUN_IP = `203.0.113.${(Date.now() % 200) + 20}`;
+
 async function post(path: string, body: unknown): Promise<Response> {
   return fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.99" },
+    headers: { "content-type": "application/json", "x-forwarded-for": RUN_IP },
     body: JSON.stringify(body),
   });
 }
 
 describe("Phase 8 integration: /api/ask", () => {
   test("GET probe reports ai_enabled boolean + provider id", async () => {
-    const r = await fetch(`${BASE}/api/ask`, { headers: { "x-forwarded-for": "203.0.113.99" } });
+    const r = await fetch(`${BASE}/api/ask`, { headers: { "x-forwarded-for": RUN_IP } });
     expect(r.status).toBe(200);
     const data = await r.json();
     expect(typeof data.ai_enabled).toBe("boolean");
@@ -33,7 +37,7 @@ describe("Phase 8 integration: /api/ask", () => {
   test("invalid json -> 400", async () => {
     const r = await fetch(`${BASE}/api/ask`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.99" },
+      headers: { "content-type": "application/json", "x-forwarded-for": RUN_IP },
       body: "{nope",
     });
     expect(r.status).toBe(400);

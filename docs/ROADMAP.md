@@ -29,8 +29,11 @@ Status verified against `main` (through Phase 7 commits, 2026-09-11).
    12/12 green against the running server; fixed `getAttempt` NUMERIC→string
    coercion + bigint-safe test payloads. Full gate now **99 tests** (6 suites + phase7).
 3. **Persona layer**: per-user research persona/profile feeding personalization.
-4. **AI layer / ModelLayer**: LLM-provider-agnostic abstraction (intent → retrieval →
-   evidence-grounded response). Not started.
+4. ~~AI layer / ModelLayer~~ **done Phase 8 (2026-09-12)**: provider-agnostic
+   `src/lib/models/` (ZRouter OpenAI-compat + NullProvider), grounded `/ask`
+   + `/api/ask` with citation validation, rate limit 12/60s, search-only
+   degrade path. Live at cogniflux.web.id/ask. Next in-layer: multi-turn,
+   `ai_queries` usage logging table (needs migration — ask first).
 5. **Admin panel**: provider health dashboard (latency/error tracking already shaped
    in schema), rate-limit observability.
 6. **Deploy hardening**: production build (`next build`) + standalone `next start`
@@ -43,7 +46,7 @@ Status verified against `main` (through Phase 7 commits, 2026-09-11).
 | Area | State |
 |---|---|
 | Phase 7 test coverage | Integration 12/12 green; CMS/IDOR-with-account cases still thin |
-| AI layer / ModelLayer | Not implemented |
+| AI layer / ModelLayer | v1 shipped (single-turn, grounded); multi-turn + usage logging pending |
 | Admin panel | Not implemented |
 | Worker/scheduler processes | None running (provider-health recording unscheduled) |
 | Cross-language expansion | Not implemented |
