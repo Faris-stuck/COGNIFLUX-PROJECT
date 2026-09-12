@@ -22,3 +22,8 @@ CREATE TABLE IF NOT EXISTS ai_queries (
 
 CREATE INDEX IF NOT EXISTS idx_ai_queries_created ON ai_queries (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_queries_user ON ai_queries (user_id, created_at DESC) WHERE user_id IS NOT NULL;
+
+-- The app role needs USAGE on the new BIGSERIAL sequences too (lessons from
+-- the first deploy: table grants existed, sequence grants did not).
+GRANT USAGE, SELECT ON SEQUENCE ai_queries_id_seq TO cogniflux;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO cogniflux;
