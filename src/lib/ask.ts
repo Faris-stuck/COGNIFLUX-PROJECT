@@ -1,6 +1,7 @@
 import type { SearchParams, Work } from "./types";
 import type { ChatMessage, LLMProvider } from "./models/types";
 import { getOrchestrator } from "./providers/orchestrator";
+import type { StoredTurn } from "./ai-store";
 
 /**
  * Evidence-grounded answering pipeline (Phase 8):
@@ -60,7 +61,13 @@ export function buildContext(papers: CitedPaper[], works: Work[]): string {
     .join("\n\n");
 }
 
-export function buildMessages(question: string, context: string, locale: "id" | "en", register?: string | null): ChatMessage[] {
+export function buildMessages(
+  question: string,
+  context: string,
+  locale: "id" | "en",
+  register?: string | null,
+  history?: StoredTurn[],
+): ChatMessage[] {
   const lang = locale === "id" ? "Bahasa Indonesia" : "English";
   return [
     {
@@ -71,8 +78,14 @@ export function buildMessages(question: string, context: string, locale: "id" | 
         `If the evidence does not support an answer, say so plainly. ` +
         `Never invent titles, authors, years, or statistics. ` +
         `Write the answer in ${lang}. Keep it under 200 words.` +
-        (register ? ` ${register}` : ""),
+        (register ? ` ${register}` : "") +
+        (history && history.length > 0
+          ? ` The conversation may include earlier turns from this chat; you may refer to them, but every factual claim in THIS answer must still cite the numbered evidence above.`
+          : ""),
     },
+    // Past turns first (oldest→newest); the fresh evidence only accompanies
+    // the final question, so older answers stay stable history, not context.
+    ...(history ?? []).map((t) => ({ role: t.role, content: t.content }) as ChatMessage),
     { role: "user", content: `Evidence:\n${context}\n\nQuestion: ${question}` },
   ];
 }
@@ -95,6 +108,7 @@ export async function askQuestion(
   provider: LLMProvider,
   locale: "id" | "en" = "id",
   register?: string | null,
+  history?: StoredTurn[],
 ): Promise<AskResult> {
   // Retrieval first — even the degraded path returns useful papers.
   const params: SearchParams = {
@@ -111,7 +125,7 @@ export async function askQuestion(
   if (!provider.available) return { ok: false, reason: "no_provider", papers };
 
   try {
-    const completion = await provider.complete(buildMessages(question, buildContext(papers, search.works), locale, register), {
+    const completion = await provider.complete(buildMessages(question, buildContext(papers, search.works), locale, register, history), {
       maxTokens: 800,
       temperature: 0.2,
     });

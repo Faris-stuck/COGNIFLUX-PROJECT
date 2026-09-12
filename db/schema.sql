@@ -135,6 +135,25 @@ CREATE TABLE IF NOT EXISTS ai_messages (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Phase 10a (migration 006): usage audit for every LLM touchpoint, degraded attempts included.
+CREATE TABLE IF NOT EXISTS ai_queries (
+  id                BIGSERIAL PRIMARY KEY,
+  user_id           UUID REFERENCES users(id) ON DELETE SET NULL,
+  conversation_id   BIGINT REFERENCES ai_conversations(id) ON DELETE SET NULL,
+  kind              TEXT NOT NULL DEFAULT 'ask',
+  question_excerpt  TEXT NOT NULL,
+  model             TEXT,
+  ok                BOOLEAN NOT NULL,
+  reason            TEXT,
+  prompt_tokens     INT,
+  completion_tokens INT,
+  latency_ms        INT,
+  ip_hash           TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_ai_queries_created ON ai_queries (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_queries_user ON ai_queries (user_id, created_at DESC) WHERE user_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS providers (
   id         TEXT PRIMARY KEY,
   kind       TEXT NOT NULL, -- academic | openaccess | education
