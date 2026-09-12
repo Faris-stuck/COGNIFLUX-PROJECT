@@ -57,6 +57,9 @@ Status verified against `main` (through Phase 7 commits, 2026-09-11).
    processes (provider health recording job), research workspace UI wiring.
 
 ## Known gaps (intentional, not silent)
+- `GET /api/collections/[id]` returns 405 (only PATCH/DELETE implemented);
+  the papers list is embedded nowhere. UI doesn't need it yet — add GET when
+  a collection detail page ships.
 | Area | State |
 |---|---|
 | Phase 7 test coverage | Integration 12/12 green; CMS/IDOR-with-account cases still thin |

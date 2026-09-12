@@ -199,7 +199,9 @@ export function EducationSearch() {
                     : "border-[var(--cf-border)] bg-[var(--cf-surface)] text-[var(--cf-text-muted)] hover:text-[var(--cf-text)]"
                 }`}
               >
-                {l.label.en} <span className="opacity-60">/ {l.label.id}</span>
+                {l.label.en === l.label.id
+                  ? l.label.id
+                  : <>{l.label.en} <span className="opacity-60">/ {l.label.id}</span></>}
               </button>
             );
           })}

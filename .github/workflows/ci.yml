@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    name: Typecheck + pure unit suites
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # Server-free suites (all mock their dependencies):
+      - run: npx jest --runInBand tests/phase5-education.test.ts tests/dedup-rank.test.ts tests/phase8-ai.test.ts tests/phase9-persona.test.ts tests/phase10-multiturn.test.ts
+
+  e2e:
+    name: Build + contract check on standalone server
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "postgresql://ciuser:***@localhost:5432/cogniflux"
+      REDIS_URL: redis://localhost:6379
+      SESSION_SECRET: "ci-o…lder"
+      AI_LOG_SALT: "ci-logsalt-placeholder"
+      COGNIFLUX_BASE_URL: http://127.0.0.1:3100
+      COGNIFLUX_HOST: localhost
+      PORT: "3100"
+      HOSTNAME: 127.0.0.1
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ciuser
+          POSTGRES_PASSWORD: "***"
+          POSTGRES_DB: cogniflux
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ciuser" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Load schema + CMS seed
+        run: |
+          psql "$DATABASE_URL" -f db/schema.sql
+          node scripts/seed_cms.mjs
+      - name: Build standalone
+        run: npm run build:prod
+      - name: Start server
+        run: |
+          (cd .next/standalone && node server.js > /tmp/cf-server.log 2>&1 &)
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3100/api/health > /dev/null && exit 0; sleep 2
+          done; tail -50 /tmp/cf-server.log; exit 1
+        shell: bash
+      - run: npm run verify:contract
+      - name: Integration suites
+        run: npx jest --runInBand tests/phase1-auth-library.test.ts tests/phase5-education-integration.test.ts tests/phase6-reader-integration.test.ts tests/phase7-prep-integration.test.ts tests/phase8-ask-integration.test.ts
+      - name: Server log on failure
+        if: failure()
+        run: tail -80 /tmp/cf-server.log || true
