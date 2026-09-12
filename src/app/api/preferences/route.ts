@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getPool } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth/session";
 import { rateLimit, clientIp } from "@/lib/auth/rate-limit";
+import { invalidatePersona, normalizeInterests } from "@/lib/persona";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,7 @@ export async function PATCH(req: NextRequest) {
   }
   const { level, locale, interests, name } = parsed.data;
   const hasUpdates = level !== undefined || locale !== undefined || interests !== undefined || name !== undefined;
+  const normalizedInterests = interests ? normalizeInterests(interests) : null;
 
   // Upsert: profiles row may be missing for pre-existing users.
   const { rows } = hasUpdates
@@ -74,12 +76,14 @@ export async function PATCH(req: NextRequest) {
            interests = COALESCE($4::text[], profiles.interests),
            name      = COALESCE($5, profiles.name)
          RETURNING name, locale, level, interests`,
-        [user.id, level ?? null, locale ?? null, interests ?? null, name ?? null]
+        [user.id, level ?? null, locale ?? null, normalizedInterests, name ?? null]
       )
     : await getPool().query(
         `SELECT name, locale, level, interests FROM profiles WHERE user_id = $1`,
         [user.id]
       );
 
+  // Persona cache must not serve a stale level/interests after a write.
+  await invalidatePersona(user.id);
   return NextResponse.json({ ok: true, profile: rows[0] ?? {} });
 }

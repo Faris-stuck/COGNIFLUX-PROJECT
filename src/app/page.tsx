@@ -4,14 +4,25 @@ import { getHomeFeed } from "@/lib/home-feed";
 import Link from "next/link";
 import { getServerLocale, getDict } from "@/lib/i18n-server";
 import { getHomeSuggestions, getHomeTopics } from "@/lib/site-content";
+import { getSessionUser } from "@/lib/auth/session";
+import { getPersona, forYouFeed } from "@/lib/persona";
 
 export default async function HomePage() {
   // Cache-first (Redis, 6h): render almost never blocks on upstream providers.
   const feed = await getHomeFeed();
-  const t = await getDict(await getServerLocale());
+  const locale = await getServerLocale();
+  const t = await getDict(locale);
   const suggestions = await getHomeSuggestions<Array<{group:string;items:string[]}>>();
   const topics = await getHomeTopics<string[]>();
   const hasFeed = feed.trending.length > 0 || feed.latest.length > 0;
+
+  // Phase 9 persona layer: "For you" only for signed-in users with interests.
+  // getPersona/forYouFeed never throw; anonymous path adds one cheap 401-GET
+  // skipped entirely because getSessionUser is cookie+session-cached.
+  const user = await getSessionUser();
+  const persona = user ? await getPersona(user.id) : null;
+  const forYou = persona && persona.interests.length > 0 ? await forYouFeed(persona.interests) : [];
+  const forYouLabel = t.home.forYou ?? (locale === "id" ? "Untukmu" : "For you");
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-14 pb-24">
@@ -25,6 +36,19 @@ export default async function HomePage() {
           </h1>
           <SearchBar />
         </div>
+
+        {forYou.length > 0 && (
+          <section aria-labelledby="foryou-heading" className="pt-2">
+            <h2 id="foryou-heading" className="text-sm font-medium uppercase tracking-wide text-[var(--cf-accent-strong)] mb-1">
+              {forYouLabel}
+            </h2>
+            <div>
+              {forYou.map((work) => (
+                <WorkCard key={work.id} work={work} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {hasFeed ? (
           <>

@@ -10,7 +10,7 @@
     "lint": "tsc --noEmit",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "test:unit": "jest --runInBand tests/phase1-auth-library.test.ts tests/phase5-education.test.ts tests/phase5-education-integration.test.ts tests/phase6-reader-integration.test.ts tests/dedup-rank.test.ts tests/phase7-prep-integration.test.ts tests/phase8-ai.test.ts",
+    "test:unit": "jest --runInBand tests/phase1-auth-library.test.ts tests/phase5-education.test.ts tests/phase5-education-integration.test.ts tests/phase6-reader-integration.test.ts tests/dedup-rank.test.ts tests/phase7-prep-integration.test.ts tests/phase8-ai.test.ts tests/phase9-persona.test.ts",
     "verify:contract": "node scripts/verify_contract.mjs",
     "verify": "npm run typecheck && npm run test:unit && npm run verify:contract",
     "build:prod": "bash scripts/build_prod.sh",

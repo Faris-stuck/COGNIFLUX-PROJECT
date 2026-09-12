@@ -4,6 +4,8 @@ import { withRequestId } from "@/lib/observability";
 import { rateLimit, clientIp } from "@/lib/auth/rate-limit";
 import { getModelLayer } from "@/lib/models";
 import { askQuestion } from "@/lib/ask";
+import { getSessionUser } from "@/lib/auth/session";
+import { getPersona, registerInstruction } from "@/lib/persona";
 
 export const dynamic = "force-dynamic";
 
@@ -42,11 +44,20 @@ export const POST = withRequestId(async (req: NextRequest) => {
     return NextResponse.json({ error: "invalid_question" }, { status: 400 });
   }
 
-  const result = await askQuestion(parsed.data.question, getModelLayer(), parsed.data.locale);
+  // Persona-aware register (Phase 9): signed-in users get an answer written
+  // for their education level. Guests/anonymous keep the Phase 8 behavior.
+  const user = await getSessionUser();
+  const persona = user ? await getPersona(user.id) : null;
+  const result = await askQuestion(
+    parsed.data.question,
+    getModelLayer(),
+    parsed.data.locale,
+    registerInstruction(persona?.level ?? null),
+  );
 
   if (result.ok) {
     return NextResponse.json({
-      authenticated: false,
+      authenticated: user !== null,
       answer: result.answer,
       papers: result.papers,
       cited: result.cited,
@@ -56,7 +67,7 @@ export const POST = withRequestId(async (req: NextRequest) => {
   }
   // Degraded: 200 + reason so the UI can render papers it already has.
   return NextResponse.json({
-    authenticated: false,
+    authenticated: user !== null,
     degraded: true,
     reason: result.reason,
     answer: null,
