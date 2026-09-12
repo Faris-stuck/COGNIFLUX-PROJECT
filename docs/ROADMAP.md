@@ -28,7 +28,12 @@ Status verified against `main` (through Phase 7 commits, 2026-09-11).
 2b. ~~Phase 7 test coverage~~ done (2026-09-12): `tests/phase7-prep-integration.test.ts`
    12/12 green against the running server; fixed `getAttempt` NUMERIC→string
    coercion + bigint-safe test payloads. Full gate now **99 tests** (6 suites + phase7).
-3. **Persona layer**: per-user research persona/profile feeding personalization.
+3. ~~Persona layer~~ **done Phase 9 (2026-09-12)**: `src/lib/persona.ts` —
+   cached persona per user, interest-set-keyed "Untukmu" feed on home
+   (shared cache → 1 provider call/hour per topic set), onboarding step 2
+   topic chips, level-aware register in `/api/ask`. Gate now **126 tests**.
+   Next for persona: interest chips in profile settings page + follow topics
+   from search results.
 4. ~~AI layer / ModelLayer~~ **done Phase 8 (2026-09-12)**: provider-agnostic
    `src/lib/models/` (ZRouter OpenAI-compat + NullProvider), grounded `/ask`
    + `/api/ask` with citation validation, rate limit 12/60s, search-only

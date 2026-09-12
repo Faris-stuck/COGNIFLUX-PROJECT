@@ -15,7 +15,10 @@ export const dynamic = "force-dynamic";
 const PreferencesSchema = z.object({
   level: z.enum(["elementary", "middle", "high", "vocational", "university", "researcher"]).optional(),
   locale: z.enum(["id", "en"]).optional(),
-  interests: z.array(z.string().trim().min(1).max(50)).max(10).optional(),
+  // Accept up to 20 raw items; normalizeInterests() (below) trims, dedupes
+  // and caps at 10 — rejecting a >10 payload outright would punish users
+  // for exactly the overflow the UI prevents server-side.
+  interests: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
   name: z.string().trim().max(80).optional(),
 });
 
