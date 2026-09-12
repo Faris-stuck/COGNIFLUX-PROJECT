@@ -25,8 +25,9 @@ Status verified against `main` (through Phase 7 commits, 2026-09-11).
 ## Next (priority order)
 1. ~~Stability~~ done except: requestId-scoped JSON log lines.
 2. ~~Health endpoints~~ done (`/health`, `/readyz`).
-2b. **Phase 7 test coverage**: unit + integration tests for prep engine, preparation
-   APIs (IDOR), i18n dictionaries — none exist yet.
+2b. ~~Phase 7 test coverage~~ done (2026-09-12): `tests/phase7-prep-integration.test.ts`
+   12/12 green against the running server; fixed `getAttempt` NUMERIC→string
+   coercion + bigint-safe test payloads. Full gate now **99 tests** (6 suites + phase7).
 3. **Persona layer**: per-user research persona/profile feeding personalization.
 4. **AI layer / ModelLayer**: LLM-provider-agnostic abstraction (intent → retrieval →
    evidence-grounded response). Not started.
@@ -41,7 +42,7 @@ Status verified against `main` (through Phase 7 commits, 2026-09-11).
 ## Known gaps (intentional, not silent)
 | Area | State |
 |---|---|
-| Phase 7 test coverage | No unit/integration tests yet for prep/i18n/CMS |
+| Phase 7 test coverage | Integration 12/12 green; CMS/IDOR-with-account cases still thin |
 | AI layer / ModelLayer | Not implemented |
 | Admin panel | Not implemented |
 | Worker/scheduler processes | None running (provider-health recording unscheduled) |
